@@ -271,6 +271,7 @@ export async function generateSQL(request: SQLGenerationRequest): Promise<SQLGen
   try {
     const response = await openai.chat.completions.create({
       model: MODEL,
+      temperature: openAiConfig.sqlTemperature,
       messages: [
         {
           role: "system",
@@ -367,7 +368,8 @@ export async function analyzeQueryResults(request: AnalysisRequest): Promise<Ana
   
   try {
     const response = await openai.chat.completions.create({
-      model: MODEL,
+      model: openAiConfig.insightsModel,
+      temperature: openAiConfig.insightsTemperature,
       messages: [
         {
           role: "system",

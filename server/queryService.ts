@@ -1,4 +1,5 @@
 import axios from "axios";
+import { apiConfig, sqlDialect } from "./config";
 
 // Cache for storing DB schema
 let schemaCache: any = null;
@@ -6,14 +7,22 @@ let schemaCache: any = null;
 class QueryService {
   private apiBaseUrl: string;
   private apiKey: string;
+  private timeout: number;
+  private headers: Record<string, string>;
 
   constructor() {
-    // Get API URL and key from environment variables
-    this.apiBaseUrl = process.env.DATABASE_API_URL || "https://api.loyalty-database.example.com";
-    this.apiKey = process.env.DATABASE_API_KEY || "your-api-key";
+    // Get API config from our configuration file
+    this.apiBaseUrl = apiConfig.baseUrl;
+    this.apiKey = apiConfig.apiKey;
+    this.timeout = apiConfig.timeout;
+    this.headers = {
+      ...apiConfig.headers,
+      'Authorization': `Bearer ${this.apiKey}`
+    };
     
     console.log(`Database API URL configured: ${this.apiBaseUrl}`);
     console.log(`Database API Key configured: ${this.apiKey ? "Yes (key provided)" : "No (using default key)"}`);
+    console.log(`SQL dialect configured: ${sqlDialect.type}`);
   }
 
   /**
@@ -27,14 +36,11 @@ class QueryService {
 
     try {
       // Call your API to get the actual database schema
-      // Replace this with your actual API endpoint
       const response = await axios.get(
         `${this.apiBaseUrl}/schema`,
         {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          }
+          headers: this.headers,
+          timeout: this.timeout
         }
       );
 
@@ -112,12 +118,14 @@ class QueryService {
       // Make an API call to execute the query against your actual database
       const response = await axios.post(
         `${this.apiBaseUrl}/execute-query`,
-        { query: sqlQuery },
+        { 
+          query: sqlQuery,
+          dialect: sqlDialect.type,
+          limit: sqlDialect.defaultLimit
+        },
         {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          }
+          headers: this.headers,
+          timeout: this.timeout
         }
       );
       
