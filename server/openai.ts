@@ -1,7 +1,8 @@
 import OpenAI from "openai";
+import { sqlDialect, openAiConfig, queryExamples } from "./config";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const MODEL = "gpt-4o";
+const MODEL = openAiConfig.sqlGenerationModel;
 
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY || "sk-your-api-key" 
@@ -275,20 +276,48 @@ export async function generateSQL(request: SQLGenerationRequest): Promise<SQLGen
           role: "system",
           content: `You are an expert SQL developer for a loyalty program platform. 
           Your task is to convert natural language questions about customer loyalty data into SQL queries.
+          
           The database schema is provided below:
           
           ${JSON.stringify(databaseSchema, null, 2)}
+          
+          SQL dialect configuration:
+          - Database type: ${sqlDialect.type}
+          - String concatenation function: ${sqlDialect.concatFunction}
+          - Date formatting function: ${sqlDialect.dateFormat}
+          - Case sensitive identifiers: ${sqlDialect.caseSensitiveIdentifiers}
+          - Quote identifiers: ${sqlDialect.quoteIdentifiers}
+          - Default result limit: ${sqlDialect.defaultLimit}
           
           When generating SQL:
           1. Only use tables and columns that exist in the schema
           2. Use appropriate joins based on the schema relationships
           3. Use clear aliases for readability
           4. Apply proper filtering, grouping, and sorting as needed
-          5. Limit results to reasonable sizes (e.g., top 10)
-          6. Follow SQL best practices
+          5. Limit results to a reasonable size using LIMIT ${sqlDialect.defaultLimit} unless another limit is specified
+          6. Follow SQL best practices for the ${sqlDialect.type} dialect
+          7. Make sure to use the exact column names as shown in the schema
+          8. For this database system, column names should be in snake_case (e.g., first_name, not firstName)
+          9. Format SQL to be easily readable with proper indentation
+          10. When referring to customer names, use ${sqlDialect.concatFunction}(first_name, ' ', last_name) to display full names
+          11. Use aliases to make column names more readable in the results (e.g., 'AS full_name')
+          
+          Here are some example queries for reference:
+          
+          Example 1:
+          Question: "${queryExamples.customerPoints.question}"
+          SQL: ${queryExamples.customerPoints.sql}
+          
+          Example 2:
+          Question: "${queryExamples.expiringPoints.question}"
+          SQL: ${queryExamples.expiringPoints.sql}
+          
+          Example 3:
+          Question: "${queryExamples.challengeCompletions.question}"
+          SQL: ${queryExamples.challengeCompletions.sql}
           
           Respond with a JSON object containing:
-          1. "query": The executable SQL query
+          1. "query": The executable SQL query that will work with this exact schema and dialect
           2. "understanding": A brief explanation of how you interpreted the question
           `
         },
@@ -342,17 +371,26 @@ export async function analyzeQueryResults(request: AnalysisRequest): Promise<Ana
       messages: [
         {
           role: "system",
-          content: `You are an expert business analyst for a loyalty program platform.
-          Your task is to analyze data from a loyalty program database and provide insights and recommendations.
+          content: `You are an expert business analyst specializing in loyalty program optimization.
+          Your task is to analyze data from a loyalty program database and provide valuable insights and actionable recommendations that will directly increase customer engagement and revenue.
           
           For each analysis, you should:
-          1. Create a meaningful title for the results
-          2. Identify 2-4 key insights from the data, highlighting important patterns or anomalies
-          3. Provide 1-3 actionable business recommendations based on these insights
+          1. Create a compelling title that clearly summarizes the key findings
+          2. Identify 3-4 key insights from the data, highlighting important patterns or anomalies
+          3. Provide 2-3 actionable business recommendations based on these insights
           
-          Format insights as concise statements with key metrics highlighted in <span class="font-medium">bold</span>.
+          When writing insights:
+          - Format insights as concise statements with key metrics highlighted in <span class="font-medium">bold</span>
+          - Quantify the findings whenever possible (use percentages, averages, totals)
+          - Compare current metrics to benchmarks or prior periods when relevant
+          - Identify potential root causes for the observations
           
-          For recommendations, categorize them as one of: 'email', 'award', or 'other'.
+          When making recommendations:
+          - Categorize each recommendation as one of: 'email', 'award', or 'other'
+          - Make recommendations specific, measurable, and actionable
+          - For 'email' recommendations, suggest specific message content and timing
+          - For 'award' recommendations, provide specific point values and qualification criteria
+          - For 'other' recommendations, include clear implementation steps
           
           Respond with a JSON object with the following structure:
           {
@@ -377,7 +415,7 @@ export async function analyzeQueryResults(request: AnalysisRequest): Promise<Ana
           Query Results: 
           ${JSON.stringify(data, null, 2)}
           
-          Please analyze these results and provide insights and recommendations.`
+          Please analyze these results and provide insights and recommendations that are tailored to this specific loyalty program data.`
         }
       ],
       response_format: { type: "json_object" }

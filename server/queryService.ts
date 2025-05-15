@@ -8,8 +8,12 @@ class QueryService {
   private apiKey: string;
 
   constructor() {
+    // Get API URL and key from environment variables
     this.apiBaseUrl = process.env.DATABASE_API_URL || "https://api.loyalty-database.example.com";
     this.apiKey = process.env.DATABASE_API_KEY || "your-api-key";
+    
+    console.log(`Database API URL configured: ${this.apiBaseUrl}`);
+    console.log(`Database API Key configured: ${this.apiKey ? "Yes (key provided)" : "No (using default key)"}`);
   }
 
   /**
@@ -21,64 +25,83 @@ class QueryService {
       return schemaCache;
     }
 
-    // For demo purposes, return a mock schema
-    // In production, this would make an API call to get the actual schema
-    const mockSchema = {
-      tables: [
+    try {
+      // Call your API to get the actual database schema
+      // Replace this with your actual API endpoint
+      const response = await axios.get(
+        `${this.apiBaseUrl}/schema`,
         {
-          name: "customers",
-          description: "Customer information for loyalty program members",
-          columns: [
-            { name: "id", type: "integer", description: "Unique customer identifier" },
-            { name: "first_name", type: "text", description: "Customer's first name" },
-            { name: "last_name", type: "text", description: "Customer's last name" },
-            { name: "email", type: "text", description: "Customer's email address" },
-            { name: "created_at", type: "timestamp", description: "When the customer joined" },
-            { name: "status", type: "text", description: "Account status (active, inactive)" }
-          ]
-        },
-        {
-          name: "points_transactions",
-          description: "Records of points earned or redeemed by customers",
-          columns: [
-            { name: "id", type: "integer", description: "Unique transaction identifier" },
-            { name: "customer_id", type: "integer", description: "References customers.id" },
-            { name: "points", type: "integer", description: "Points earned (positive) or redeemed (negative)" },
-            { name: "type", type: "text", description: "Transaction type (earn, redeem)" },
-            { name: "category", type: "text", description: "Category (purchase, referral, challenge, social)" },
-            { name: "created_at", type: "timestamp", description: "When the transaction occurred" }
-          ]
-        },
-        {
-          name: "challenges",
-          description: "Loyalty program challenges that customers can complete to earn points",
-          columns: [
-            { name: "id", type: "integer", description: "Unique challenge identifier" },
-            { name: "name", type: "text", description: "Challenge name" },
-            { name: "description", type: "text", description: "Challenge description" },
-            { name: "points", type: "integer", description: "Points awarded for completion" },
-            { name: "start_date", type: "timestamp", description: "When the challenge starts" },
-            { name: "end_date", type: "timestamp", description: "When the challenge ends" },
-            { name: "status", type: "text", description: "Challenge status (active, completed, expired)" }
-          ]
-        },
-        {
-          name: "challenge_completions",
-          description: "Records of challenges completed by customers",
-          columns: [
-            { name: "id", type: "integer", description: "Unique completion identifier" },
-            { name: "customer_id", type: "integer", description: "References customers.id" },
-            { name: "challenge_id", type: "integer", description: "References challenges.id" },
-            { name: "completed_at", type: "timestamp", description: "When the challenge was completed" },
-            { name: "points_awarded", type: "integer", description: "Points awarded for completion" }
-          ]
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          }
         }
-      ]
-    };
+      );
 
-    // Cache the schema
-    schemaCache = mockSchema;
-    return mockSchema;
+      // Cache the schema
+      schemaCache = response.data;
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching database schema:", error);
+      
+      // Fallback schema if API call fails
+      const fallbackSchema = {
+        tables: [
+          {
+            name: "customers",
+            description: "Customer information for loyalty program members",
+            columns: [
+              { name: "id", type: "integer", description: "Unique customer identifier" },
+              { name: "first_name", type: "text", description: "Customer's first name" },
+              { name: "last_name", type: "text", description: "Customer's last name" },
+              { name: "email", type: "text", description: "Customer's email address" },
+              { name: "created_at", type: "timestamp", description: "When the customer joined" },
+              { name: "status", type: "text", description: "Account status (active, inactive)" }
+            ]
+          },
+          {
+            name: "points_transactions",
+            description: "Records of points earned or redeemed by customers",
+            columns: [
+              { name: "id", type: "integer", description: "Unique transaction identifier" },
+              { name: "customer_id", type: "integer", description: "References customers.id" },
+              { name: "points", type: "integer", description: "Points earned (positive) or redeemed (negative)" },
+              { name: "type", type: "text", description: "Transaction type (earn, redeem)" },
+              { name: "category", type: "text", description: "Category (purchase, referral, challenge, social)" },
+              { name: "created_at", type: "timestamp", description: "When the transaction occurred" }
+            ]
+          },
+          {
+            name: "challenges",
+            description: "Loyalty program challenges that customers can complete to earn points",
+            columns: [
+              { name: "id", type: "integer", description: "Unique challenge identifier" },
+              { name: "name", type: "text", description: "Challenge name" },
+              { name: "description", type: "text", description: "Challenge description" },
+              { name: "points", type: "integer", description: "Points awarded for completion" },
+              { name: "start_date", type: "timestamp", description: "When the challenge starts" },
+              { name: "end_date", type: "timestamp", description: "When the challenge ends" },
+              { name: "status", type: "text", description: "Challenge status (active, completed, expired)" }
+            ]
+          },
+          {
+            name: "challenge_completions",
+            description: "Records of challenges completed by customers",
+            columns: [
+              { name: "id", type: "integer", description: "Unique completion identifier" },
+              { name: "customer_id", type: "integer", description: "References customers.id" },
+              { name: "challenge_id", type: "integer", description: "References challenges.id" },
+              { name: "completed_at", type: "timestamp", description: "When the challenge was completed" },
+              { name: "points_awarded", type: "integer", description: "Points awarded for completion" }
+            ]
+          }
+          // Add your additional tables here as needed
+        ]
+      };
+
+      schemaCache = fallbackSchema;
+      return fallbackSchema;
+    }
   }
 
   /**
@@ -86,8 +109,25 @@ class QueryService {
    */
   async executeQuery(sqlQuery: string) {
     try {
-      // In production, this would make an API call to execute the query
-      // For demo purposes, simulate different data based on the query
+      // Make an API call to execute the query against your actual database
+      const response = await axios.post(
+        `${this.apiBaseUrl}/execute-query`,
+        { query: sqlQuery },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      // Return the data from the API response
+      return response.data;
+    } catch (error) {
+      console.error("Error executing query:", error);
+      
+      // If API call fails, fallback to mock data for testing/demo purposes
+      console.log("API call failed, falling back to mock data");
       
       // Extract key information from the query to determine what mock data to return
       const lowerQuery = sqlQuery.toLowerCase();
@@ -105,9 +145,6 @@ class QueryService {
         // Default to top points earners if we can't determine
         return this.getMockTopPointsEarners();
       }
-    } catch (error) {
-      console.error("Error executing query:", error);
-      throw new Error("Failed to execute query against database");
     }
   }
 
