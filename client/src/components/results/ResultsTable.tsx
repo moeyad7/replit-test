@@ -15,6 +15,21 @@ export default function ResultsTable({ title, data, isLoading }: ResultsTablePro
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`;
   };
+  
+  // Handle both camelCase and snake_case property names from API
+  const getCustomerName = (customer: any) => {
+    const first = customer.firstName || customer.first_name || '';
+    const last = customer.lastName || customer.last_name || '';
+    return `${first} ${last}`;
+  };
+  
+  const getCustomerEmail = (customer: any) => {
+    return customer.email || '';
+  };
+  
+  const getCustomerPoints = (customer: any) => {
+    return customer.points || 0;
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -71,18 +86,21 @@ export default function ResultsTable({ title, data, isLoading }: ResultsTablePro
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className={`w-8 h-8 rounded-full ${index === 0 ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-700'} flex items-center justify-center font-medium text-xs`}>
-                        {getInitials(customer.firstName, customer.lastName)}
+                        {getInitials(
+                          customer.firstName || customer.first_name || '',
+                          customer.lastName || customer.last_name || ''
+                        )}
                       </div>
                       <div className="ml-3">
-                        <div className="text-sm font-medium text-gray-900">{`${customer.firstName} ${customer.lastName}`}</div>
+                        <div className="text-sm font-medium text-gray-900">{getCustomerName(customer)}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                    {customer.email}
+                    {getCustomerEmail(customer)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-                    {typeof customer.points === 'number' ? customer.points.toLocaleString() : customer.points}
+                    {typeof getCustomerPoints(customer) === 'number' ? getCustomerPoints(customer).toLocaleString() : getCustomerPoints(customer)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                     <button className="text-primary-600 hover:text-primary-800">View</button>

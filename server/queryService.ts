@@ -111,17 +111,20 @@ class QueryService {
   }
 
   /**
-   * Execute a SQL query against the database
+   * Execute a SQL query by sending it to a REST API endpoint
    */
   async executeQuery(sqlQuery: string) {
     try {
-      // Make an API call to execute the query against your actual database
+      console.log("Sending SQL query to API:", sqlQuery);
+      
+      // Send the SQL query to the API endpoint
       const response = await axios.post(
         `${this.apiBaseUrl}/execute-query`,
         { 
-          query: sqlQuery,
-          dialect: sqlDialect.type,
-          limit: sqlDialect.defaultLimit
+          sql: sqlQuery,  // The SQL query to execute
+          // Add any additional parameters your API needs
+          format: "json",
+          maxRows: sqlDialect.defaultLimit
         },
         {
           headers: this.headers,
@@ -129,10 +132,12 @@ class QueryService {
         }
       );
       
+      console.log("Received response from API");
+      
       // Return the data from the API response
       return response.data;
     } catch (error) {
-      console.error("Error executing query:", error);
+      console.error("Error sending query to API:", error);
       
       // If API call fails, fallback to mock data for testing/demo purposes
       console.log("API call failed, falling back to mock data");
@@ -157,35 +162,38 @@ class QueryService {
   }
 
   /**
-   * Mock data generators
+   * Mock data generators - for testing purposes when the API is not available
    */
   private getMockTopPointsEarners() {
+    // Return in snake_case format to match most SQL results
     return [
-      { id: 1, firstName: "Michael", lastName: "Scott", email: "mscott@example.com", points: 3542 },
-      { id: 2, firstName: "Jim", lastName: "Halpert", email: "jhalpert@example.com", points: 2891 },
-      { id: 3, firstName: "Pam", lastName: "Beesly", email: "pbeesly@example.com", points: 2745 },
-      { id: 4, firstName: "Dwight", lastName: "Schrute", email: "dschrute@example.com", points: 2103 },
-      { id: 5, firstName: "Kelly", lastName: "Kapoor", email: "kkapoor@example.com", points: 1986 }
+      { id: 1, first_name: "Michael", last_name: "Scott", email: "mscott@example.com", points: 3542 },
+      { id: 2, first_name: "Jim", last_name: "Halpert", email: "jhalpert@example.com", points: 2891 },
+      { id: 3, first_name: "Pam", last_name: "Beesly", email: "pbeesly@example.com", points: 2745 },
+      { id: 4, first_name: "Dwight", last_name: "Schrute", email: "dschrute@example.com", points: 2103 },
+      { id: 5, first_name: "Kelly", last_name: "Kapoor", email: "kkapoor@example.com", points: 1986 }
     ];
   }
 
   private getMockExpiringPoints() {
+    // Return in snake_case format to match most SQL results
     return [
-      { id: 6, firstName: "Andy", lastName: "Bernard", email: "abernard@example.com", points: 1275, expiryDate: "2023-07-15" },
-      { id: 7, firstName: "Stanley", lastName: "Hudson", email: "shudson@example.com", points: 950, expiryDate: "2023-07-18" },
-      { id: 8, firstName: "Phyllis", lastName: "Vance", email: "pvance@example.com", points: 875, expiryDate: "2023-07-22" },
-      { id: 9, firstName: "Kevin", lastName: "Malone", email: "kmalone@example.com", points: 650, expiryDate: "2023-07-25" },
-      { id: 10, firstName: "Oscar", lastName: "Martinez", email: "omartinez@example.com", points: 590, expiryDate: "2023-07-28" }
+      { id: 6, first_name: "Andy", last_name: "Bernard", email: "abernard@example.com", points: 1275, expiry_date: "2023-07-15" },
+      { id: 7, first_name: "Stanley", last_name: "Hudson", email: "shudson@example.com", points: 950, expiry_date: "2023-07-18" },
+      { id: 8, first_name: "Phyllis", last_name: "Vance", email: "pvance@example.com", points: 875, expiry_date: "2023-07-22" },
+      { id: 9, first_name: "Kevin", last_name: "Malone", email: "kmalone@example.com", points: 650, expiry_date: "2023-07-25" },
+      { id: 10, first_name: "Oscar", last_name: "Martinez", email: "omartinez@example.com", points: 590, expiry_date: "2023-07-28" }
     ];
   }
 
   private getMockChallengeCompletions() {
+    // Return in snake_case format to match most SQL results
     return [
-      { id: 1, name: "Summer Bonus", completions: 542, totalParticipants: 1200, completionRate: 45.2 },
-      { id: 2, name: "Referral Drive", completions: 321, totalParticipants: 800, completionRate: 40.1 },
-      { id: 3, name: "Social Media", completions: 268, totalParticipants: 600, completionRate: 44.7 },
-      { id: 4, name: "First Purchase", completions: 189, totalParticipants: 250, completionRate: 75.6 },
-      { id: 5, name: "Loyalty Anniversary", completions: 143, totalParticipants: 200, completionRate: 71.5 }
+      { id: 1, name: "Summer Bonus", completions: 542, total_participants: 1200, completion_rate: 45.2 },
+      { id: 2, name: "Referral Drive", completions: 321, total_participants: 800, completion_rate: 40.1 },
+      { id: 3, name: "Social Media", completions: 268, total_participants: 600, completion_rate: 44.7 },
+      { id: 4, name: "First Purchase", completions: 189, total_participants: 250, completion_rate: 75.6 },
+      { id: 5, name: "Loyalty Anniversary", completions: 143, total_participants: 200, completion_rate: 71.5 }
     ];
   }
 }
