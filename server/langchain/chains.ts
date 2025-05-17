@@ -19,27 +19,22 @@ export function createSqlGenerationChain() {
   const schemaString = formatSchemaForLLM(schema);
   
   // Create prompt template for SQL generation
-  const sqlGenerationPrompt = PromptTemplate.fromTemplate(`
-    You are a SQL expert for a loyalty program database. Your task is to convert natural language questions 
-    into SQL queries that can answer the question.
-    
-    Use the following database schema:
-    {schema}
-    
-    Important guidelines:
-    1. Only use the tables and columns defined in the schema
-    2. Always use proper SQL syntax for the PostgreSQL dialect
-    3. Include appropriate JOINs when information from multiple tables is needed
-    4. Use descriptive aliases for tables (e.g., c for customers, pt for points_transactions)
-    5. Limit results to 100 rows unless specified otherwise
-    6. Use simple ORDER BY and GROUP BY clauses when appropriate
-    7. Format the SQL query nicely with line breaks and proper indentation
-    8. Only return a valid SQL query and nothing else
-    
-    User question: {question}
-    
-    SQL Query:
-  `);
+  const sqlGenerationPrompt = PromptTemplate.fromTemplate(
+    "You are a SQL expert for a loyalty program database. Your task is to convert natural language questions " +
+    "into SQL queries that can answer the question.\n\n" +
+    "Use the following database schema:\n{schema}\n\n" +
+    "Important guidelines:\n" +
+    "1. Only use the tables and columns defined in the schema\n" +
+    "2. Always use proper SQL syntax for the PostgreSQL dialect\n" +
+    "3. Include appropriate JOINs when information from multiple tables is needed\n" +
+    "4. Use descriptive aliases for tables (e.g., c for customers, pt for points_transactions)\n" +
+    "5. Limit results to 100 rows unless specified otherwise\n" +
+    "6. Use simple ORDER BY and GROUP BY clauses when appropriate\n" +
+    "7. Format the SQL query nicely with line breaks and proper indentation\n" +
+    "8. Only return a valid SQL query and nothing else\n\n" +
+    "User question: {question}\n\n" +
+    "SQL Query:"
+  );
   
   // Create the chain
   const sqlGenerationChain = RunnableSequence.from([
@@ -81,20 +76,20 @@ export function createInsightsGenerationChain() {
     2. 3-5 key insights from the data (focus on patterns, trends, or notable observations)
     3. 2-3 actionable business recommendations based on these insights
     
-    Format your response as a JSON object with the following structure:
+    Format your response as a JSON object with the following structure (remove the triple backticks):
+    ```json
     {
       "title": "Analysis title",
       "insights": [
         {"id": 1, "text": "First insight..."},
-        {"id": 2, "text": "Second insight..."},
-        ...
+        {"id": 2, "text": "Second insight..."}
       ],
       "recommendations": [
         {"id": 1, "title": "Recommendation title", "description": "Details...", "type": "email|award|other"},
-        {"id": 2, "title": "Recommendation title", "description": "Details...", "type": "email|award|other"},
-        ...
+        {"id": 2, "title": "Recommendation title", "description": "Details...", "type": "email|award|other"}
       ]
     }
+    ```
   `);
   
   // Create the chain

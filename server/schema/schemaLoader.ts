@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import { fileURLToPath } from 'url';
+
+// For ESM compatibility (replacing __dirname)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface TableColumn {
   name: string;

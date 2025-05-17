@@ -3,9 +3,13 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateSQL, analyzeQueryResults } from "./openai";
 import { queryService } from "./queryService";
+import { LoyaltyAgent } from './langchain/simplified';
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // API route for executing queries
+  // Initialize LangChain LoyaltyAgent
+  const loyaltyAgent = new LoyaltyAgent();
+  
+  // API route for executing queries (using LangChain agent)
   app.post("/api/query", async (req, res) => {
     try {
       const { query } = req.body;
@@ -14,45 +18,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Query is required" });
       }
       
-      // Get database schema
-      const dbSchema = await queryService.getDatabaseSchema();
+      console.log(`Processing query with LangChain agent: ${query}`);
       
-      // Step 1: Generate SQL from natural language question
-      const sqlGeneration = await generateSQL({
-        question: query,
-        databaseSchema: dbSchema
-      });
+      // Use the LangChain LoyaltyAgent to process the query
+      const result = await loyaltyAgent.processQuestion(query);
       
-      // Step 2: Execute SQL query against database
-      const startTime = Date.now();
-      const queryResults = await queryService.executeQuery(sqlGeneration.query);
-      const queryTime = ((Date.now() - startTime) / 1000).toFixed(2);
+      // Return the complete response from the LangChain agent
+      res.json(result);
       
-      // Step 3: Analyze results
-      const analysis = await analyzeQueryResults({
-        question: query,
-        data: queryResults,
-        sqlQuery: sqlGeneration.query
-      });
-      
-      // Step 4: Return the complete response
-      res.json({
-        queryUnderstanding: sqlGeneration.understanding,
-        sqlQuery: sqlGeneration.query,
-        databaseResults: {
-          count: queryResults.length,
-          time: parseFloat(queryTime)
-        },
-        title: analysis.title,
-        data: queryResults,
-        insights: analysis.insights,
-        recommendations: analysis.recommendations
-      });
     } catch (error: any) {
       console.error("Error processing query:", error);
       res.status(500).json({ 
         message: "Error processing query",
-        error: error.message
+        error: error?.message || 'Unknown error'
       });
     }
   });

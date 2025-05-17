@@ -46,10 +46,10 @@ router.get('/api/schema', (req: Request, res: Response) => {
     return res.status(200).json({
       schema
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error loading schema:', error);
     return res.status(500).json({
-      error: `Failed to load schema: ${error.message || 'Unknown error'}`
+      error: `Failed to load schema: ${error?.message || 'Unknown error'}`
     });
   }
 });

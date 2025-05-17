@@ -6,6 +6,18 @@ interface QueryUnderstanding {
   understanding: string;
 }
 
+interface Insight {
+  id: number;
+  text: string;
+}
+
+interface Recommendation {
+  id: number;
+  title: string;
+  description: string;
+  type: 'email' | 'award' | 'other' | string;
+}
+
 interface QueryResult {
   queryUnderstanding: string;
   sqlQuery: string;
@@ -15,16 +27,8 @@ interface QueryResult {
   };
   title: string;
   data: any[];
-  insights: Array<{
-    id: number;
-    text: string;
-  }>;
-  recommendations: Array<{
-    id: number;
-    title: string;
-    description: string;
-    type: 'email' | 'award' | 'other' | string;
-  }>;
+  insights: Insight[];
+  recommendations: Recommendation[];
 }
 
 /**
@@ -118,7 +122,12 @@ export class LoyaltyAgent {
         });
         
         try {
-          insights = JSON.parse(insightsJson);
+          const parsed = JSON.parse(insightsJson);
+          insights = {
+            title: parsed.title || "Data Analysis",
+            insights: parsed.insights || [],
+            recommendations: parsed.recommendations || []
+          };
         } catch (parseError) {
           console.error('Error parsing insights JSON:', parseError);
           insights = {
