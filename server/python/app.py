@@ -6,7 +6,7 @@ from pathlib import Path
 import time
 
 # Import our custom modules
-from loyalty_agent import LoyaltyAgent
+from server.python.loyalty_agent import LoyaltyAgent
 
 # Load environment variables
 load_dotenv()
