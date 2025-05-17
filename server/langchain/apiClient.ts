@@ -50,8 +50,8 @@ export class ApiClient {
           executionTime: response.data.time || 0
         }
       };
-    } catch (error) {
-      console.error('Error executing query:', error.message);
+    } catch (error: any) {
+      console.error('Error executing query:', error?.message || 'Unknown error');
       
       if (axios.isAxiosError(error)) {
         if (error.response) {
@@ -74,7 +74,7 @@ export class ApiClient {
       
       return {
         data: [],
-        error: `Error executing query: ${error.message}`
+        error: `Error executing query: ${error?.message || 'Unknown error'}`
       };
     }
   }
