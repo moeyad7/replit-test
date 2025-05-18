@@ -7,7 +7,7 @@ echo "Starting Python backend with Flask and LangChain..."
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 # Configure Python backend to run on port 5001
-export PORT=5001
+export PORT=5000
 
 # Run the Python backend
 cd server/python

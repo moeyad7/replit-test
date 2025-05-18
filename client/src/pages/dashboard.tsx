@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { pythonApiRequest } from "../pythonBackendProxy"; // Import our Python backend proxy
+import { pythonApiRequest } from "../pythonBackendProxy";
 import { useToast } from "@/hooks/use-toast";
 import QueryInput from "@/components/query/QueryInput";
 import ProcessingSteps from "@/components/query/ProcessingSteps";
@@ -16,17 +15,7 @@ export default function Dashboard() {
 
   const queryMutation = useMutation({
     mutationFn: async (query: string) => {
-      // Toggle between Node.js and Python backends using this flag
-      const usePythonBackend = true; // Set to true to use Python backend
-      
-      let res;
-      if (usePythonBackend) {
-        // Use Python backend
-        res = await pythonApiRequest("POST", "/api/query", { query });
-      } else {
-        // Use Node.js backend (original)
-        res = await apiRequest("POST", "/api/query", { query });
-      }
+      const res = await pythonApiRequest("POST", "/api/query", { question: query });
       return res.json();
     },
     onSuccess: (data: QueryResponse) => {

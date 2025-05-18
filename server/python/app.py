@@ -1,18 +1,27 @@
 import os
 import json
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from dotenv import load_dotenv
 from pathlib import Path
 import time
 
 # Import our custom modules
-from server.python.loyalty_agent import LoyaltyAgent
+from loyalty_agent import LoyaltyAgent
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask application
 app = Flask(__name__)
+# Enable CORS for all routes
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:5173"],  # Vite dev server
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 
 # Initialize our LoyaltyAgent
 loyalty_agent = LoyaltyAgent()
@@ -24,11 +33,11 @@ def process_query():
     """
     data = request.json
     
-    if not data or 'query' not in data:
-        return jsonify({'error': 'Query is required'}), 400
+    if not data or 'question' not in data:
+        return jsonify({'error': 'Question is required'}), 400
     
-    query = data['query']
-    print(f"Processing query: {query}")
+    query = data['question']
+    print(f"Processing question: {query}")
     
     try:
         # Start timing
@@ -116,7 +125,7 @@ if __name__ == '__main__':
         print("API Key configured: Yes (key provided)")
     else:
         print("API Key not configured")
-    print(f"SQL dialect configured: {os.environ.get('SQL_DIALECT', 'postgresql')}")
+    print(f"SQL dialect configured: {os.environ.get('SQL_DIALECT', 'redshift')}")
     
     # Run the application
     app.run(host='0.0.0.0', port=port, debug=os.environ.get('FLASK_ENV') == 'development')

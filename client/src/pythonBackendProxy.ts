@@ -3,7 +3,7 @@
  */
 
 // The base URL of the Python backend
-const PYTHON_BACKEND_URL = 'http://localhost:5001';
+const PYTHON_BACKEND_URL = 'http://localhost:5000';
 
 /**
  * Function to proxy API requests to the Python backend

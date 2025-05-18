@@ -1,6 +1,53 @@
+# Dependencies
 node_modules
+venv
+.pnp
+.pnp.js
+
+# Build outputs
 dist
-.DS_Store
-server/public
-vite.config.ts.*
+build
 *.tar.gz
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.DS_Store
+.idea
+.vscode
+*.swp
+*.swo
+.cursor
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage
+.nyc_output
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+
+# Server specific
+server/public
+
+# Vite
+vite.config.ts.*
+
+# Lock files (optional, depending on your preference)
+# package-lock.json
+# yarn.lock
+# uv.lock

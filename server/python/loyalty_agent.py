@@ -11,7 +11,10 @@ from langchain_core.messages import HumanMessage
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)  # Force override of existing variables
+print("Environment variables loaded")
+print("OPENAI_API_KEY from env:", os.environ.get("OPENAI_API_KEY"))
+print("Current working directory:", os.getcwd())
 
 # Schema type definitions
 class TableColumn:
@@ -59,7 +62,7 @@ class LoyaltyAgent:
         """Initialize the LoyaltyAgent with language models and database schema"""
         # Initialize the language model
         self.model = ChatOpenAI(
-            model="gpt-4o",  # The newest OpenAI model
+            model="gpt-4o-mini",  
             temperature=0,   # Deterministic outputs
             api_key=os.environ.get("OPENAI_API_KEY")
         )
@@ -144,6 +147,37 @@ class LoyaltyAgent:
         """Get the database schema information"""
         return self.schema.to_dict()
     
+    def determine_relevant_tables(self, question: str, all_tables: List[Table]) -> List[Table]:
+        """
+        Determine which tables are relevant to the user's question
+        """
+        # Create a simple prompt to identify relevant tables
+        table_names = [table.name for table in all_tables]
+        table_descriptions = {table.name: table.description for table in all_tables}
+        
+        prompt = f"""Given the user's question about a loyalty program database, identify which tables are needed to answer it.
+        
+        Available tables:
+        {json.dumps(table_descriptions, indent=2)}
+        
+        User question: {question}
+        
+        Return only the names of relevant tables as a JSON array, e.g., ["customers", "points_transactions"]"""
+        
+        # Use a smaller model for this task to save tokens
+        model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+        response = model.invoke([HumanMessage(content=prompt)])
+        
+        try:
+            # Extract table names from response
+            relevant_table_names = json.loads(response.content)
+            return [table for table in all_tables if table.name in relevant_table_names]
+        except:
+            # Fallback to a simple keyword matching if parsing fails
+            return [table for table in all_tables 
+                    if table.name in question.lower() or 
+                    any(word in question.lower() for word in table.name.split('_'))]
+    
     def _generate_sql(self, question: str) -> str:
         """
         Generate SQL from a natural language question
@@ -155,8 +189,12 @@ class LoyaltyAgent:
             A SQL query string
         """
         try:
-            # Format schema for the prompt
-            schema_string = self._format_schema_for_prompt()
+            
+            # First determine which tables are relevant
+            relevant_tables = self.determine_relevant_tables(question, self.schema.tables)
+    
+            # Format only the relevant schema for the prompt
+            schema_string = self._format_schema_for_prompt(relevant_tables)
             
             # Create prompt for SQL generation
             prompt = f"""You are a SQL expert for a loyalty program database. Your task is to convert natural language questions 
@@ -167,7 +205,7 @@ class LoyaltyAgent:
             
             Important guidelines:
             1. Only use the tables and columns defined in the schema
-            2. Always use proper SQL syntax for the PostgreSQL dialect
+            2. Always use proper SQL syntax for the Redshift data warehouse dialect
             3. Include appropriate JOINs when information from multiple tables is needed
             4. Use descriptive aliases for tables (e.g., c for customers, pt for points_transactions)
             5. Limit results to 100 rows unless specified otherwise
@@ -266,17 +304,17 @@ class LoyaltyAgent:
             3. 2-3 actionable business recommendations based on these insights
             
             Format your response as a JSON object with the following structure:
-            {
+            {{
               "title": "Analysis title",
               "insights": [
-                {"id": 1, "text": "First insight..."},
-                {"id": 2, "text": "Second insight..."}
+                {{"id": 1, "text": "First insight..."}},
+                {{"id": 2, "text": "Second insight..."}}
               ],
               "recommendations": [
-                {"id": 1, "title": "Recommendation title", "description": "Details...", "type": "email|award|other"},
-                {"id": 2, "title": "Recommendation title", "description": "Details...", "type": "email|award|other"}
+                {{"id": 1, "title": "Recommendation title", "description": "Details...", "type": "email|award|other"}},
+                {{"id": 2, "title": "Recommendation title", "description": "Details...", "type": "email|award|other"}}
               ]
-            }"""
+            }}"""
             
             # Generate insights with the language model
             response = self.model.invoke([HumanMessage(content=prompt)])
@@ -285,13 +323,14 @@ class LoyaltyAgent:
             try:
                 response_text = response.content.strip()
                 # Find JSON in the response (in case it contains additional text)
-                json_match = response_text.find('{')
-                if json_match >= 0:
-                    json_str = response_text[json_match:]
+                json_start = response_text.find('{')
+                json_end = response_text.rfind('}') + 1
+                if json_start >= 0 and json_end > json_start:
+                    json_str = response_text[json_start:json_end]
                     analysis = json.loads(json_str)
                     return analysis
                 else:
-                    raise ValueError("No JSON found in response")
+                    raise ValueError("No valid JSON found in response")
                     
             except Exception as parse_error:
                 print(f"Error parsing insights JSON: {str(parse_error)}")
@@ -377,16 +416,19 @@ class LoyaltyAgent:
             # Return empty schema if there's an error
             return DatabaseSchema(tables=[])
     
-    def _format_schema_for_prompt(self) -> str:
+    def _format_schema_for_prompt(self, relevant_tables: List[Table]) -> str:
         """
         Format the database schema for inclusion in prompts
         
+        Args:
+            relevant_tables: List of tables to format in the schema
+            
         Returns:
             A formatted string representation of the schema
         """
         result = "DATABASE SCHEMA:\n\n"
         
-        for table in self.schema.tables:
+        for table in relevant_tables:
             result += f"TABLE: {table.name}\n"
             result += f"DESCRIPTION: {table.description}\n"
             result += "COLUMNS:\n"
