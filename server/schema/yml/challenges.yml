@@ -1,24 +1,24 @@
-name: challenges
-description: Marketing challenges that customers can complete to earn bonus points
 columns:
-  - name: id
-    type: integer
-    description: Unique identifier for the challenge
-  - name: name
-    type: text
-    description: Name of the challenge
-  - name: description
-    type: text
-    description: Details about what customers need to do to complete the challenge
-  - name: points
-    type: integer
-    description: Number of points awarded for completing the challenge
-  - name: start_date
-    type: timestamp
-    description: Date when the challenge becomes available
-  - name: end_date
-    type: timestamp
-    description: Date when the challenge expires
-  - name: active
-    type: boolean
-    description: Whether the challenge is currently active
+- description: Unique identifier for the challenge
+  name: id
+  type: integer
+- description: Name of the challenge
+  name: name
+  type: text
+- description: Details about what customers need to do to complete the challenge
+  name: description
+  type: text
+- description: Number of points awarded for completing the challenge
+  name: points
+  type: integer
+- description: Date when the challenge becomes available
+  name: start_date
+  type: timestamp
+- description: Date when the challenge expires
+  name: end_date
+  type: timestamp
+- description: Whether the challenge is currently active
+  name: active
+  type: boolean
+description: Marketing challenges that customers can complete to earn bonus points
+name: challenges

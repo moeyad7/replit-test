@@ -1,21 +1,21 @@
-name: customers
-description: Contains customer information and their loyalty points
 columns:
-  - name: id
-    type: integer
-    description: Unique identifier for the customer
-  - name: first_name
-    type: text
-    description: Customer's first name
-  - name: last_name
-    type: text
-    description: Customer's last name
-  - name: email
-    type: text
-    description: Customer's email address
-  - name: points
-    type: integer
-    description: Current loyalty points balance
-  - name: created_at
-    type: timestamp
-    description: Date when the customer joined the loyalty program
+- description: Unique identifier for the customer
+  name: id
+  type: integer
+- description: Customer's first name
+  name: first_name
+  type: text
+- description: Customer's last name
+  name: last_name
+  type: text
+- description: Customer's email address
+  name: email
+  type: text
+- description: Current loyalty points balance
+  name: points
+  type: integer
+- description: Date when the customer joined the loyalty program
+  name: created_at
+  type: timestamp
+description: Contains customer information and their loyalty points
+name: customers

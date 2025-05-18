@@ -12,7 +12,7 @@ trap cleanup SIGINT SIGTERM
 
 # Start Python backend
 echo "Starting Python backend..."
-cd server/python
+cd server
 # Add the current directory to PYTHONPATH
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 python3 run.py &
@@ -23,7 +23,7 @@ sleep 2
 
 # Start frontend development server
 echo "Starting frontend development server..."
-cd ../..  # Go back to root directory
+cd ..  # Go back to root directory
 npm run dev &
 FRONTEND_PID=$!
 

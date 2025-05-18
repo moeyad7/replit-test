@@ -1,18 +1,18 @@
-name: challenge_completions
-description: Records of challenges completed by customers
 columns:
-  - name: id
-    type: integer
-    description: Unique identifier for the completion record
-  - name: customer_id
-    type: integer
-    description: Reference to the customer who completed the challenge
-  - name: challenge_id
-    type: integer
-    description: Reference to the challenge that was completed
-  - name: completion_date
-    type: timestamp
-    description: Date when the customer completed the challenge
-  - name: points_awarded
-    type: integer
-    description: Number of points awarded for completing the challenge
+- description: Unique identifier for the completion record
+  name: id
+  type: integer
+- description: Reference to the customer who completed the challenge
+  name: customer_id
+  type: integer
+- description: Reference to the challenge that was completed
+  name: challenge_id
+  type: integer
+- description: Date when the customer completed the challenge
+  name: completion_date
+  type: timestamp
+- description: Number of points awarded for completing the challenge
+  name: points_awarded
+  type: integer
+description: Records of challenges completed by customers
+name: challenge_completions

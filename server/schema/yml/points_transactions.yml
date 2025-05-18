@@ -1,24 +1,24 @@
-name: points_transactions
-description: Records of points earned or redeemed by customers
 columns:
-  - name: id
-    type: integer
-    description: Unique identifier for the transaction
-  - name: customer_id
-    type: integer
-    description: Reference to the customer who earned or redeemed points
-  - name: points
-    type: integer
-    description: Number of points (positive for earned, negative for redeemed)
-  - name: transaction_date
-    type: timestamp
-    description: Date when the transaction occurred
-  - name: expiry_date
-    type: timestamp
-    description: Date when the points will expire, if applicable
-  - name: source
-    type: text
-    description: Source of the transaction (purchase, referral, redemption, etc.)
-  - name: description
-    type: text
-    description: Additional details about the transaction
+- description: Unique identifier for the transaction
+  name: id
+  type: integer
+- description: Reference to the customer who earned or redeemed points
+  name: customer_id
+  type: integer
+- description: Number of points (positive for earned, negative for redeemed)
+  name: points
+  type: integer
+- description: Date when the transaction occurred
+  name: transaction_date
+  type: timestamp
+- description: Date when the points will expire, if applicable
+  name: expiry_date
+  type: timestamp
+- description: Source of the transaction (purchase, referral, redemption, etc.)
+  name: source
+  type: text
+- description: Additional details about the transaction
+  name: description
+  type: text
+description: Records of points earned or redeemed by customers
+name: points_transactions

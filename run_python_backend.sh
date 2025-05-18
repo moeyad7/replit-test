@@ -10,5 +10,5 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PORT=5000
 
 # Run the Python backend
-cd server/python
+cd server
 python3 run.py
