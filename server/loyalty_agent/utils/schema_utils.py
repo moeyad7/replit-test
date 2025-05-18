@@ -5,80 +5,79 @@ from ..models.schema import Table, TableColumn, DatabaseSchema
 
 def load_database_schema() -> DatabaseSchema:
     """
-    Load database schema from YAML files
-    
+    Load database schema from YAML files.
+
     Returns:
         DatabaseSchema object
     """
-    # Directory for schema files
     schema_dir = Path(__file__).parent.parent.parent / "schema" / "yml"
     tables = []
-    
+
     try:
-        # Create directory if it doesn't exist
         schema_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Get YAML files
         yml_files = list(schema_dir.glob("*.yml")) + list(schema_dir.glob("*.yaml"))
-        
-        # Create sample files if none exist
+
         if not yml_files:
             print("No schema files found. Creating sample schema files.")
             create_sample_schema_files(schema_dir)
             yml_files = list(schema_dir.glob("*.yml")) + list(schema_dir.glob("*.yaml"))
-        
-        # Load each schema file
+
         for file_path in yml_files:
             with open(file_path, "r") as f:
                 table_data = yaml.safe_load(f)
-            
+
             if table_data and "name" in table_data and "columns" in table_data:
-                columns = [
-                    TableColumn(
+                columns = []
+                for col in table_data["columns"]:
+                    column = TableColumn(
                         name=col["name"],
                         type=col["type"],
-                        description=col["description"]
+                        description=col["description"],
+                        properties=col.get("properties")  # Optional field
                     )
-                    for col in table_data["columns"]
-                ]
-                
-                tables.append(Table(
+                    columns.append(column)
+
+                table = Table(
                     name=table_data["name"],
-                    description=table_data["description"],
+                    description=table_data.get("description", ""),
                     columns=columns
-                ))
+                )
+                tables.append(table)
             else:
                 print(f"Invalid schema format in file {file_path}")
-        
+
         return DatabaseSchema(tables=tables)
-        
+
     except Exception as e:
         print(f"Error loading database schema: {str(e)}")
-        # Return empty schema if there's an error
         return DatabaseSchema(tables=[])
 
 def format_schema_for_prompt(relevant_tables: List[Table]) -> str:
     """
-    Format the database schema for inclusion in prompts
-    
+    Format the database schema for inclusion in prompts.
+
     Args:
-        relevant_tables: List of tables to format in the schema
-        
+        relevant_tables: List of tables to format in the schema.
+
     Returns:
-        A formatted string representation of the schema
+        A formatted string representation of the schema.
     """
     result = "DATABASE SCHEMA:\n\n"
-    
+
     for table in relevant_tables:
         result += f"TABLE: {table.name}\n"
         result += f"DESCRIPTION: {table.description}\n"
         result += "COLUMNS:\n"
-        
+
         for column in table.columns:
-            result += f"  - {column.name} ({column.type}): {column.description}\n"
-        
+            line = f"  - {column.name} ({column.type}): {column.description}"
+            if column.properties:
+                props = ", ".join(f"{k}={v}" for k, v in column.properties.items())
+                line += f" [{props}]"
+            result += line + "\n"
+
         result += "\n"
-    
+
     return result
 
 def create_sample_schema_files(directory: Path) -> None:

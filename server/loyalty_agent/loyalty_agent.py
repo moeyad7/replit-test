@@ -6,10 +6,12 @@ from typing import Dict, List, Any, Optional, Union
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from dotenv import load_dotenv
+import requests
 
 from .models.schema import Table, DatabaseSchema
 from .utils.schema_utils import load_database_schema, format_schema_for_prompt
 from .mock_data.mock_data import get_mock_data
+from .chat_history import ChatHistory
 
 # Load environment variables
 load_dotenv(override=True)  # Force override of existing variables
@@ -34,14 +36,30 @@ class LoyaltyAgent:
         # Load database schema
         self.schema = load_database_schema()
         
+        # Initialize chat history
+        self.chat_history = ChatHistory()
+        
         print("LoyaltyAgent initialized with LangChain")
     
-    def process_question(self, question: str) -> Dict[str, Any]:
+    def create_chat_session(self) -> str:
+        """Create a new chat session and return its ID"""
+        return self.chat_history.create_session()
+    
+    def get_chat_history(self, session_id: str) -> List[Dict[str, Any]]:
+        """Get the chat history for a session"""
+        return self.chat_history.get_history(session_id)
+    
+    def clear_chat_history(self, session_id: str) -> None:
+        """Clear the chat history for a session"""
+        self.chat_history.clear_history(session_id)
+    
+    def process_question(self, question: str, session_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Process a natural language question about loyalty program data
         
         Args:
             question: The natural language question to process
+            session_id: Optional session ID for chat history
             
         Returns:
             A dictionary containing the query understanding, SQL query, results,
@@ -51,7 +69,7 @@ class LoyaltyAgent:
             print(f"Processing question: {question}")
             
             # Step 1: Generate SQL from the question
-            sql_query = self._generate_sql(question)
+            sql_query = self._generate_sql(question, session_id)
             print(f"Generated SQL: {sql_query}")
             
             # Step 2: Execute the SQL query
@@ -64,8 +82,8 @@ class LoyaltyAgent:
             analysis = self._generate_insights(question, sql_query, query_results)
             print(f"Generated insights: {analysis.get('title', 'No title')}")
             
-            # Step 4: Return the complete result
-            return {
+            # Step 4: Prepare the response
+            response = {
                 "queryUnderstanding": f"I'm looking for loyalty program data that answers: '{question}'",
                 "sqlQuery": sql_query,
                 "databaseResults": {
@@ -78,11 +96,17 @@ class LoyaltyAgent:
                 "recommendations": analysis.get("recommendations", [])
             }
             
+            # Step 5: Add to chat history if session_id is provided
+            if session_id:
+                self.chat_history.add_message(session_id, question, response)
+            
+            return response
+            
         except Exception as e:
             print(f"Error in LoyaltyAgent: {str(e)}")
             
             # Return a fallback response
-            return {
+            response = {
                 "queryUnderstanding": "There was an error understanding your question.",
                 "sqlQuery": "",
                 "databaseResults": {
@@ -106,23 +130,58 @@ class LoyaltyAgent:
                     }
                 ]
             }
+            
+            # Add error response to chat history if session_id is provided
+            if session_id:
+                self.chat_history.add_message(session_id, question, response)
+            
+            return response
     
     def get_schema(self) -> Dict[str, Any]:
         """Get the database schema information"""
         return self.schema.to_dict()
     
-    def determine_relevant_tables(self, question: str, all_tables: List[Table]) -> List[Table]:
+    def determine_relevant_tables(self, question: str, all_tables: List[Table], session_id: Optional[str] = None) -> List[Table]:
         """
         Determine which tables are relevant to the user's question
+        
+        Args:
+            question: The natural language question
+            all_tables: List of all available tables
+            session_id: Optional session ID to include chat history context
+            
+        Returns:
+            List of relevant tables
         """
         # Create a simple prompt to identify relevant tables
         table_names = [table.name for table in all_tables]
         table_descriptions = {table.name: table.description for table in all_tables}
         
+        # Get chat history if session_id is provided
+        chat_context = ""
+        if session_id:
+            try:
+                history = self.chat_history.get_history(session_id)
+                if history:
+                    chat_context = "\n\nPrevious conversation context:\n"
+                    for msg in history[-3:]:  # Only include last 3 messages for context
+                        chat_context += f"Q: {msg['question']}\n"
+                        chat_context += f"SQL: {msg['response']['sqlQuery']}\n\n"
+            except Exception as e:
+                print(f"Warning: Could not get chat history: {str(e)}")
+        
         prompt = f"""Given the user's question about a loyalty program database, identify which tables are needed to answer it.
         
         Available tables:
         {json.dumps(table_descriptions, indent=2)}
+        
+        {chat_context}
+        
+        Important guidelines:
+        1. Consider the full context of the conversation when determining relevant tables
+        2. If the question references previous queries (e.g., "their", "those", "same"), use the context to understand which tables are needed
+        3. Include all tables that might be needed for the query, even if they're only referenced indirectly
+        4. Be thorough in table selection to ensure all necessary data can be accessed
         
         User question: {question}
         
@@ -142,22 +201,37 @@ class LoyaltyAgent:
                     if table.name in question.lower() or 
                     any(word in question.lower() for word in table.name.split('_'))]
     
-    def _generate_sql(self, question: str) -> str:
+    def _generate_sql(self, question: str, session_id: Optional[str] = None) -> str:
         """
         Generate SQL from a natural language question
         
         Args:
             question: The natural language question
+            session_id: Optional session ID to include chat history context
             
         Returns:
             A SQL query string
         """
         try:
             # First determine which tables are relevant
-            relevant_tables = self.determine_relevant_tables(question, self.schema.tables)
+            relevant_tables = self.determine_relevant_tables(question, self.schema.tables, session_id)
     
             # Format only the relevant schema for the prompt
             schema_string = format_schema_for_prompt(relevant_tables)
+            
+            # Get chat history if session_id is provided
+            chat_context = ""
+            if session_id:
+                try:
+                    history = self.chat_history.get_history(session_id)
+                    if history:
+                        chat_context = "\n\nPrevious conversation context:\n"
+                        for msg in history[-3:]:  # Only include last 3 messages for context
+                            chat_context += f"Q: {msg['question']}\n"
+                            chat_context += f"A: {msg['response']['queryUnderstanding']}\n"
+                            chat_context += f"SQL: {msg['response']['sqlQuery']}\n\n"
+                except Exception as e:
+                    print(f"Warning: Could not get chat history: {str(e)}")
             
             # Create prompt for SQL generation
             prompt = f"""You are a SQL expert for a loyalty program database. Your task is to convert natural language questions 
@@ -165,6 +239,8 @@ class LoyaltyAgent:
             
             Use the following database schema:
             {schema_string}
+            
+            {chat_context}
             
             Important guidelines:
             1. Only use the tables and columns defined in the schema
@@ -175,6 +251,7 @@ class LoyaltyAgent:
             6. Use simple ORDER BY and GROUP BY clauses when appropriate
             7. Format the SQL query nicely with line breaks and proper indentation
             8. Only return a valid SQL query and nothing else
+            9. If the question references previous queries or results, use that context to generate a more accurate query
             
             User question: {question}
             

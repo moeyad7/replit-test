@@ -2,34 +2,69 @@
  * Proxy module to redirect API calls to the Python backend
  */
 
-// The base URL of the Python backend
-const PYTHON_BACKEND_URL = 'http://localhost:5000';
+import axios from 'axios';
 
-/**
- * Function to proxy API requests to the Python backend
- */
-export async function pythonApiRequest(
-  method: string,
-  endpoint: string,
-  data?: unknown
-): Promise<Response> {
-  // Construct the full URL to the Python backend
-  const url = `${PYTHON_BACKEND_URL}${endpoint}`;
-  
-  console.log(`Proxying ${method} request to Python backend: ${url}`);
-  
-  // Make the API request to the Python backend
-  const response = await fetch(url, {
-    method,
-    headers: data ? { 'Content-Type': 'application/json' } : {},
-    body: data ? JSON.stringify(data) : undefined,
-  });
-  
-  // Check if the response is ok
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Error from Python backend: ${response.status} - ${errorText}`);
-  }
-  
-  return response;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+export interface QueryResponse {
+  queryUnderstanding: string;
+  sqlQuery: string;
+  databaseResults: {
+    count: number;
+    time: number;
+  };
+  title: string;
+  data: any[];
+  insights: Array<{
+    id: number;
+    text: string;
+  }>;
+  recommendations: Array<{
+    id: number;
+    title: string;
+    description: string;
+    type: string;
+  }>;
 }
+
+export interface ChatMessage {
+  timestamp: number;
+  question: string;
+  response: QueryResponse;
+}
+
+export interface ChatHistory {
+  history: ChatMessage[];
+}
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export const submitQuery = async (question: string, sessionId?: string): Promise<QueryResponse> => {
+  const response = await api.post('/query', { question, session_id: sessionId });
+  return response.data;
+};
+
+export const getSchema = async () => {
+  const response = await api.get('/schema');
+  return response.data.schema;
+};
+
+// New chat session endpoints
+export const createChatSession = async (): Promise<{ session_id: string }> => {
+  const response = await api.post('/chat/session');
+  return response.data;
+};
+
+export const getChatHistory = async (sessionId: string): Promise<ChatHistory> => {
+  const response = await api.get(`/chat/history/${sessionId}`);
+  return response.data;
+};
+
+export const clearChatHistory = async (sessionId: string): Promise<void> => {
+  await api.delete(`/chat/history/${sessionId}`);
+};

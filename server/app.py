@@ -26,6 +26,33 @@ CORS(app, resources={
 # Initialize our LoyaltyAgent
 loyalty_agent = LoyaltyAgent()
 
+@app.route('/api/chat/session', methods=['POST'])
+def create_chat_session():
+    """Create a new chat session"""
+    try:
+        session_id = loyalty_agent.create_chat_session()
+        return jsonify({'session_id': session_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat/history/<session_id>', methods=['GET'])
+def get_chat_history(session_id):
+    """Get chat history for a session"""
+    try:
+        history = loyalty_agent.get_chat_history(session_id)
+        return jsonify({'history': history})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat/history/<session_id>', methods=['DELETE'])
+def clear_chat_history(session_id):
+    """Clear chat history for a session"""
+    try:
+        loyalty_agent.clear_chat_history(session_id)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/query', methods=['POST'])
 def process_query():
     """
@@ -37,14 +64,18 @@ def process_query():
         return jsonify({'error': 'Question is required'}), 400
     
     query = data['question']
+    session_id = data.get('session_id')  # Optional session ID
+    
     print(f"Processing question: {query}")
+    if session_id:
+        print(f"Using chat session: {session_id}")
     
     try:
         # Start timing
         start_time = time.time()
         
         # Process the query using our LangChain agent
-        result = loyalty_agent.process_question(query)
+        result = loyalty_agent.process_question(query, session_id)
         
         # End timing
         elapsed_time = time.time() - start_time

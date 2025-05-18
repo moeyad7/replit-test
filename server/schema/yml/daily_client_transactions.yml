@@ -1,0 +1,345 @@
+name: gameball_analytics.daily_client_transactions_grouped
+description: "Aggregated transaction data grouped by client, and date."
+columns:
+  - name: unique_id
+    description: "Unique identifier for each record, generated using an MD5 hash of client_id, date, tag_id, and redeemer_frequency."
+    type: character varying
+    properties:
+      unique: true
+      not_null: true
+
+  - name: client_id
+    description: "Unique identifier for the client."
+    type: character varying
+    properties:
+      not_null: true
+
+  - name: date
+    description: "The date on which the transactions occurred."
+    type: date
+    properties:
+      not_null: true
+
+  - name: tag_id
+    description: "Tag associated with the transaction. Typically represents a campaign or segmentation tag."
+    type: integer
+    properties:
+      not_null: true
+
+  - name: redeemer_frequency
+    description: "Frequency category of the customer redeeming points (e.g., first-time, returning)."
+    type: character varying
+    properties:
+      not_null: true
+
+  - name: transaction_count
+    description: "Total number of transactions on the given date for the client."
+    type: bigint
+
+  - name: customer_count
+    description: "Total number of distinct customers involved in transactions on the given date."
+    type: bigint
+
+  - name: earned_points
+    description: "Total points earned by customers on the given date."
+    type: bigint
+
+  - name: earned_transactions
+    description: "Number of transactions in which points were earned."
+    type: bigint
+
+  - name: earned_customers
+    description: "Number of distinct customers who earned points."
+    type: bigint
+
+  - name: earned_value
+    description: "Total monetary value corresponding to earned points."
+    type: numeric
+
+  - name: earned_usd
+    description: "USD equivalent of the earned points' value."
+    type: double precision
+
+  - name: redeemed_points
+    description: "Total points redeemed by customers."
+    type: bigint
+
+  - name: redeemed_transactions
+    description: "Number of transactions where points were redeemed."
+    type: bigint
+
+  - name: redeemed_customers
+    description: "Number of distinct customers who redeemed points."
+    type: bigint
+
+  - name: redeemed_value
+    description: "Total monetary value of redeemed points."
+    type: numeric
+
+  - name: redeemed_usd
+    description: "USD equivalent of redeemed points."
+    type: double precision
+
+  - name: burned_points
+    description: "Total points burned (permanently removed without usage)."
+    type: bigint
+
+  - name: burned_transactions
+    description: "Number of transactions where points were burned."
+    type: bigint
+
+  - name: burned_customers
+    description: "Number of distinct customers whose points were burned."
+    type: bigint
+
+  - name: burned_value
+    description: "Total monetary value of burned points."
+    type: numeric
+
+  - name: burned_usd
+    description: "USD equivalent of burned points."
+    type: double precision
+
+  - name: achievement_reward_points
+    description: "Points rewarded as part of achievements (e.g., reaching milestones)."
+    type: bigint
+
+  - name: achievement_reward_transactions
+    description: "Number of transactions resulting in achievement-based rewards."
+    type: bigint
+
+  - name: achievement_reward_customers
+    description: "Number of distinct customers receiving achievement rewards."
+    type: bigint
+
+  - name: achievement_reward_value
+    description: "Monetary value of achievement reward points."
+    type: numeric
+
+  - name: achievement_reward_usd
+    description: "USD equivalent of achievement reward points."
+    type: double precision
+
+  - name: payment_reward_points
+    description: "Points awarded based on payment activity."
+    type: bigint
+
+  - name: payment_reward_transactions
+    description: "Number of transactions generating payment-based rewards."
+    type: bigint
+
+  - name: payment_reward_customers
+    description: "Number of distinct customers receiving payment-based rewards."
+    type: bigint
+
+  - name: payment_reward_value
+    description: "Monetary value of payment reward points."
+    type: numeric
+
+  - name: payment_reward_usd
+    description: "USD equivalent of payment reward points."
+    type: double precision
+
+  - name: refunded_points
+    description: "Points that were fully refunded to customers."
+    type: bigint
+
+  - name: refunded_transactions
+    description: "Number of transactions in which points were fully refunded."
+    type: bigint
+
+  - name: refunded_customers
+    description: "Number of distinct customers who received full point refunds."
+    type: bigint
+
+  - name: refunded_value
+    description: "Monetary value of refunded points."
+    type: numeric
+
+  - name: refunded_usd
+    description: "USD equivalent of refunded points."
+    type: double precision
+
+  - name: redeemed_fixed_points
+    description: "Points redeemed for fixed rewards."
+    type: bigint
+
+  - name: redeemed_fixed_transactions
+    description: "Transactions in which fixed point redemptions occurred."
+    type: bigint
+
+  - name: redeemed_fixed_customers
+    description: "Customers who redeemed points for fixed rewards."
+    type: bigint
+
+  - name: redeemed_fixed_value
+    description: "Monetary value of fixed redemptions."
+    type: numeric
+
+  - name: redeemed_fixed_usd
+    description: "USD equivalent of fixed point redemptions."
+    type: double precision
+
+  - name: expired_points
+    description: "Points that expired before being used."
+    type: bigint
+
+  - name: expired_transactions
+    description: "Transactions associated with expired points."
+    type: bigint
+
+  - name: expired_customers
+    description: "Customers who had points expire."
+    type: bigint
+
+  - name: expired_value
+    description: "Monetary value of expired points."
+    type: numeric
+
+  - name: expired_usd
+    description: "USD equivalent of expired points."
+    type: double precision
+
+  - name: cancelled_points
+    description: "Points that were canceled."
+    type: bigint
+
+  - name: cancelled_transactions
+    description: "Transactions in which points were canceled."
+    type: bigint
+
+  - name: cancelled_customers
+    description: "Customers who had points canceled."
+    type: bigint
+
+  - name: cancelled_value
+    description: "Monetary value of canceled points."
+    type: numeric
+
+  - name: cancelled_usd
+    description: "USD equivalent of canceled points."
+    type: double precision
+
+  - name: migrated_points
+    description: "Points migrated from another system or period."
+    type: bigint
+
+  - name: migrated_transactions
+    description: "Transactions involving migrated points."
+    type: bigint
+
+  - name: migrated_customers
+    description: "Customers involved in point migration."
+    type: bigint
+
+  - name: migrated_value
+    description: "Monetary value of migrated points."
+    type: numeric
+
+  - name: migrated_usd
+    description: "USD equivalent of migrated points."
+    type: double precision
+
+  - name: manual_accumulated_points
+    description: "Points manually added by administrators."
+    type: bigint
+
+  - name: manual_accumulated_transactions
+    description: "Transactions involving manual point accumulation."
+    type: bigint
+
+  - name: manual_accumulated_customers
+    description: "Customers who received manually accumulated points."
+    type: bigint
+
+  - name: manual_accumulated_value
+    description: "Monetary value of manually accumulated points."
+    type: numeric
+
+  - name: manual_accumulated_usd
+    description: "USD equivalent of manually accumulated points."
+    type: double precision
+
+  - name: redeemed_discount_points
+    description: "Points redeemed for discount rewards."
+    type: bigint
+
+  - name: redeemed_discount_transactions
+    description: "Transactions with discount point redemptions."
+    type: bigint
+
+  - name: redeemed_discount_customers
+    description: "Customers who redeemed points for discounts."
+    type: bigint
+
+  - name: redeemed_discount_value
+    description: "Monetary value of discount redemptions."
+    type: numeric
+
+  - name: redeemed_discount_usd
+    description: "USD equivalent of discount redemptions."
+    type: double precision
+
+  - name: manual_deduction_points
+    description: "Points manually deducted by administrators."
+    type: bigint
+
+  - name: manual_deduction_transactions
+    description: "Transactions involving manual point deductions."
+    type: bigint
+
+  - name: manual_deduction_customers
+    description: "Customers who had points manually deducted."
+    type: bigint
+
+  - name: manual_deduction_value
+    description: "Monetary value of manually deducted points."
+    type: numeric
+
+  - name: manual_deduction_usd
+    description: "USD equivalent of manually deducted points."
+    type: double precision
+
+  - name: manual_rewarded_points
+    description: "Points manually rewarded by administrators."
+    type: bigint
+
+  - name: manual_rewarded_transactions
+    description: "Transactions involving manual rewards."
+    type: bigint
+
+  - name: manual_rewarded_customers
+    description: "Customers who received manual rewards."
+    type: bigint
+
+  - name: manual_rewarded_value
+    description: "Monetary value of manual rewards."
+    type: numeric
+
+  - name: manual_rewarded_usd
+    description: "USD equivalent of manual rewards."
+    type: double precision
+
+  - name: partially_refunded_points
+    description: "Points that were partially refunded."
+    type: bigint
+
+  - name: partially_refunded_transactions
+    description: "Transactions with partial point refunds."
+    type: bigint
+
+  - name: partially_refunded_customers
+    description: "Customers who received partial point refunds."
+    type: bigint
+
+  - name: partially_refunded_value
+    description: "Monetary value of partially refunded points."
+    type: numeric
+
+  - name: partially_refunded_usd
+    description: "USD equivalent of partially refunded points."
+    type: double precision
+
+  - name: row_last_updated
+    description: "Timestamp when the record was last updated."
+    type: timestamp with time zone
