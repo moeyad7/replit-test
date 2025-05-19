@@ -1,0 +1,48 @@
+name: gameball_analytics.daily_client_campaigns
+description: "Aggregated daily metrics for campaigns, including participation, achievements, and coupon usage."
+columns:
+    - name: date
+      description: "The date of the challenge participation or achievement."
+      properties:
+        - not_null
+
+    - name: campaign_id
+      description: "The unique identifier for the campaign."
+      properties:
+        - not_null
+
+    - name: campaign_name
+      description: "The name of the campaign."
+
+    - name: campaign_behavior
+      description: "The behavior or type of the campaign."
+
+    - name: client_id
+      description: "The unique identifier for the client associated with the campaign."
+
+    - name: is_active
+      description: "Indicates whether the challenge is active (1) or inactive (0)."
+
+    - name: win_type
+      description: "Indicates whether the challenge has multiple wins or a single win."
+
+    - name: participated_customers_count
+      description: "The number of unique customers who participated in the campaign."
+
+    - name: achieved_customers_count
+      description: "The number of unique customers who achieved the campaign."
+
+    - name: issued_coupons_count
+      description: "The number of coupons issued as part of the campaign."
+
+    - name: burned_coupons_count
+      description: "The number of coupons burned (used) as part of the campaign."
+
+    - name: campaign_points
+      description: "The total points awarded as part of the campaign."
+
+    - name: campaign_value
+      description: "The total monetary value of the points awarded as part of the campaign."
+
+    - name: campaign_usd
+      description: "The total monetary value of the points awarded in USD."

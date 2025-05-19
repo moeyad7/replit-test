@@ -18,13 +18,16 @@ app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
         "origins": ["http://localhost:5173"],  # Vite dev server
-        "methods": ["GET", "POST", "OPTIONS"],
+        "methods": ["GET", "POST", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type"]
     }
 })
 
 # Initialize our LoyaltyAgent
 loyalty_agent = LoyaltyAgent()
+
+# Default client_id
+DEFAULT_CLIENT_ID = 5252
 
 @app.route('/api/chat/session', methods=['POST'])
 def create_chat_session():
@@ -39,7 +42,8 @@ def create_chat_session():
 def get_chat_history(session_id):
     """Get chat history for a session"""
     try:
-        history = loyalty_agent.get_chat_history(session_id)
+        client_id = request.args.get('client_id', DEFAULT_CLIENT_ID)
+        history = loyalty_agent.get_chat_history(session_id, client_id=client_id)
         return jsonify({'history': history})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -50,6 +54,8 @@ def clear_chat_history(session_id):
     try:
         loyalty_agent.clear_chat_history(session_id)
         return jsonify({'status': 'success'})
+    except ValueError as e:
+        return jsonify({'error': 'Session not found', 'details': str(e)}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -65,17 +71,19 @@ def process_query():
     
     query = data['question']
     session_id = data.get('session_id')  # Optional session ID
+    client_id = data.get('client_id', DEFAULT_CLIENT_ID)
     
     print(f"Processing question: {query}")
     if session_id:
         print(f"Using chat session: {session_id}")
+    print(f"Using client_id: {client_id}")
     
     try:
         # Start timing
         start_time = time.time()
         
         # Process the query using our LangChain agent
-        result = loyalty_agent.process_question(query, session_id)
+        result = loyalty_agent.process_question(query, session_id, client_id=client_id)
         
         # End timing
         elapsed_time = time.time() - start_time
@@ -117,7 +125,8 @@ def get_schema():
     Get the database schema information
     """
     try:
-        schema = loyalty_agent.get_schema()
+        client_id = request.args.get('client_id', DEFAULT_CLIENT_ID)
+        schema = loyalty_agent.get_schema(client_id=client_id)
         return jsonify({'schema': schema})
     
     except Exception as e:
@@ -145,18 +154,3 @@ def serve_frontend(path):
     return jsonify({
         'error': 'Not found. In development, frontend is served by Vite.'
     }), 404
-
-if __name__ == '__main__':
-    # Get port from environment variable or use default
-    port = int(os.environ.get('PORT', 5000))
-    
-    # Print configuration info
-    print(f"API URL configured: {os.environ.get('DATABASE_API_URL', 'Not configured')}")
-    if os.environ.get('DATABASE_API_KEY'):
-        print("API Key configured: Yes (key provided)")
-    else:
-        print("API Key not configured")
-    print(f"SQL dialect configured: {os.environ.get('SQL_DIALECT', 'redshift')}")
-    
-    # Run the application
-    app.run(host='0.0.0.0', port=port, debug=os.environ.get('FLASK_ENV') == 'development')

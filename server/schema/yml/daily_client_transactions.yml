@@ -1,8 +1,8 @@
-name: gameball_analytics.daily_client_transactions_grouped
+name: gameball_analytics.daily_client_transactions
 description: "Aggregated transaction data grouped by client, and date."
 columns:
   - name: unique_id
-    description: "Unique identifier for each record, generated using an MD5 hash of client_id, date, tag_id, and redeemer_frequency."
+    description: "Unique identifier for each record, generated using an MD5 hash of client_id, and date."
     type: character varying
     properties:
       unique: true
@@ -17,18 +17,6 @@ columns:
   - name: date
     description: "The date on which the transactions occurred."
     type: date
-    properties:
-      not_null: true
-
-  - name: tag_id
-    description: "Tag associated with the transaction. Typically represents a campaign or segmentation tag."
-    type: integer
-    properties:
-      not_null: true
-
-  - name: redeemer_frequency
-    description: "Frequency category of the customer redeeming points (e.g., first-time, returning)."
-    type: character varying
     properties:
       not_null: true
 

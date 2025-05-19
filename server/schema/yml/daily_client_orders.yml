@@ -1,0 +1,102 @@
+name: gameball_analytics.daily_client_orders
+description: "Aggregated order metrics per client per day."
+columns:
+  - name: unique_id
+    description: "MD5 hash of client_id and date to ensure uniqueness."
+    properties:
+      - unique
+      - not_null
+
+  - name: client_id
+    description: "Unique identifier for the client."
+    properties:
+      - not_null
+
+  - name: date
+    description: "Date of the order aggregation."
+    properties:
+      - not_null
+
+  - name: order_count
+    description: "Total number of orders for the client on the given date."
+
+  - name: avg_basket_size
+    description: "Average number of units sold per order."
+
+  - name: order_processed_count
+    description: "Number of processed orders."
+
+  - name: referred_order_count
+    description: "Number of orders that were referred."
+
+  - name: customer_count
+    description: "Distinct count of customers who placed orders."
+
+  - name: email_order_count
+    description: "Number of orders attributed to Gameball reward emails."
+
+  - name: coupons_order_count
+    description: "Number of orders where Gameball coupons were used."
+
+  - name: redeemer_order_count
+    description: "Number of orders placed by customers who have redeemed points."
+
+  - name: gameball_attributed_order_count
+    description: "Number of orders attributed to Gameball rewards, referrals, or coupons."
+
+  - name: referred_order_revenue
+    description: "Revenue from referred orders."
+
+  - name: referred_order_revenue_usd
+    description: "Revenue from referred orders in USD."
+
+  - name: coupons_order_revenue
+    description: "Revenue from orders that used Gameball coupons."
+
+  - name: coupons_order_revenue_usd
+    description: "Revenue from orders that used Gameball coupons in USD."
+
+  - name: redeemer_order_revenue
+    description: "Revenue from orders placed by redeemers."
+
+  - name: redeemer_order_revenue_usd
+    description: "Revenue from orders placed by redeemers in USD."
+
+  - name: gameball_attributed_order_revenue
+    description: "Total revenue from Gameball-attributed orders."
+
+  - name: gameball_attributed_order_revenue_usd
+    description: "Total revenue from Gameball-attributed orders in USD."
+
+  - name: email_order_revenue
+    description: "Revenue from orders attributed to Gameball reward emails."
+
+  - name: email_order_revenue_usd
+    description: "Revenue from orders attributed to Gameball reward emails in USD."
+
+  - name: total_order_value
+    description: "Total order value, considering discounts and total paid amount."
+
+  - name: total_order_value_usd
+    description: "Total order value in USD."
+
+  - name: total_order_paid
+    description: "Total amount paid for all orders."
+
+  - name: total_order_paid_usd
+    description: "Total amount paid for all orders in USD."
+
+  - name: total_order_discount
+    description: "Total discount applied to orders."
+
+  - name: total_order_discount_usd
+    description: "Total discount applied to orders in USD."
+
+  - name: average_order_value
+    description: "Average value of an order."
+
+  - name: average_order_value_usd
+    description: "Average value of an order in USD."
+
+  - name: row_last_updated
+    description: "Timestamp of when the row was last updated."

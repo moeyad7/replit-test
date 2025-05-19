@@ -41,25 +41,26 @@ class LoyaltyAgent:
         
         print("LoyaltyAgent initialized with LangChain")
     
-    def create_chat_session(self) -> str:
+    def create_chat_session(self, client_id: int = 5252) -> str:
         """Create a new chat session and return its ID"""
         return self.chat_history.create_session()
     
-    def get_chat_history(self, session_id: str) -> List[Dict[str, Any]]:
+    def get_chat_history(self, session_id: str, client_id: int = 5252) -> List[Dict[str, Any]]:
         """Get the chat history for a session"""
         return self.chat_history.get_history(session_id)
     
-    def clear_chat_history(self, session_id: str) -> None:
+    def clear_chat_history(self, session_id: str, client_id: int = 5252) -> None:
         """Clear the chat history for a session"""
         self.chat_history.clear_history(session_id)
     
-    def process_question(self, question: str, session_id: Optional[str] = None) -> Dict[str, Any]:
+    def process_question(self, question: str, session_id: Optional[str] = None, client_id: int = 5252) -> Dict[str, Any]:
         """
         Process a natural language question about loyalty program data
         
         Args:
             question: The natural language question to process
             session_id: Optional session ID for chat history
+            client_id: The client ID to filter data for (default: 5252)
             
         Returns:
             A dictionary containing the query understanding, SQL query, results,
@@ -67,9 +68,10 @@ class LoyaltyAgent:
         """
         try:
             print(f"Processing question: {question}")
+            print(f"Using client_id: {client_id}")
             
             # Step 1: Generate SQL from the question
-            sql_query = self._generate_sql(question, session_id)
+            sql_query = self._generate_sql(question, session_id, client_id)
             print(f"Generated SQL: {sql_query}")
             
             # Step 2: Execute the SQL query
@@ -137,7 +139,7 @@ class LoyaltyAgent:
             
             return response
     
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self, client_id: int = 5252) -> Dict[str, Any]:
         """Get the database schema information"""
         return self.schema.to_dict()
     
@@ -185,11 +187,11 @@ class LoyaltyAgent:
         
         User question: {question}
         
-        Return only the names of relevant tables as a JSON array, e.g., ["customers", "points_transactions"]"""
+        Return only the names of relevant tables as a JSON array"""
         
         # Use a smaller model for this task to save tokens
         model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
-        response = model.invoke([HumanMessage(content=prompt)])
+        response = model.invoke([HumanMessage(content=prompt)])    
         
         try:
             # Extract table names from response
@@ -201,13 +203,14 @@ class LoyaltyAgent:
                     if table.name in question.lower() or 
                     any(word in question.lower() for word in table.name.split('_'))]
     
-    def _generate_sql(self, question: str, session_id: Optional[str] = None) -> str:
+    def _generate_sql(self, question: str, session_id: Optional[str] = None, client_id: int = 5252) -> str:
         """
         Generate SQL from a natural language question
         
         Args:
             question: The natural language question
             session_id: Optional session ID to include chat history context
+            client_id: The client ID to filter data for
             
         Returns:
             A SQL query string
@@ -243,35 +246,34 @@ class LoyaltyAgent:
             {chat_context}
             
             Important guidelines:
-            1. Only use the tables and columns defined in the schema
-            2. Always use proper SQL syntax for the Redshift data warehouse dialect
-            3. Include appropriate JOINs when information from multiple tables is needed
-            4. Use descriptive aliases for tables (e.g., c for customers, pt for points_transactions)
-            5. Limit results to 100 rows unless specified otherwise
-            6. Use simple ORDER BY and GROUP BY clauses when appropriate
-            7. Format the SQL query nicely with line breaks and proper indentation
-            8. Only return a valid SQL query and nothing else
-            9. If the question references previous queries or results, use that context to generate a more accurate query
+            1. Always filter results by client_id = {client_id}
+            2. Only use the tables and columns defined in the schema
+            3. Always use proper SQL syntax for the Redshift data warehouse dialect
+            4. Include appropriate JOINs when information from multiple tables is needed
+            5. Use descriptive aliases for tables (e.g., c for customers, pt for points_transactions)
+            6. Limit results to 100 rows unless specified otherwise
+            7. Use simple ORDER BY and GROUP BY clauses when appropriate
+            8. Format the SQL query nicely with line breaks and proper indentation
+            9. Only return a valid SQL query and nothing else
+            10. If the question references previous queries or results, use that context to generate a more accurate query
             
             User question: {question}
             
-            SQL Query:"""
+            Return only the SQL query as a string."""
             
-            # Generate SQL with the language model
+            # Generate SQL using the language model
             response = self.model.invoke([HumanMessage(content=prompt)])
-            
-            # Extract the SQL query from the response
             sql_query = response.content.strip()
             
             return sql_query
             
         except Exception as e:
             print(f"Error generating SQL: {str(e)}")
-            raise Exception(f"Failed to generate SQL: {str(e)}")
+            raise
     
     def _execute_query(self, sql_query: str) -> tuple[List[Dict[str, Any]], int]:
         """
-        Execute a SQL query by sending it to the API
+        Execute a SQL query by sending it to the mock API
         
         Args:
             sql_query: The SQL query to execute
@@ -280,10 +282,8 @@ class LoyaltyAgent:
             Tuple of (results list, count)
         """
         try:
-            # Get API configuration from environment variables
-            base_url = os.environ.get("DATABASE_API_URL", "https://example.com")
-            api_key = os.environ.get("DATABASE_API_KEY", "")
-            timeout = int(os.environ.get("API_TIMEOUT", "30000")) / 1000  # Convert to seconds
+            # Use the local mock API
+            base_url = "http://localhost:4000"
             
             print(f"Sending query to: {base_url}/query")
             
@@ -292,11 +292,10 @@ class LoyaltyAgent:
                 f"{base_url}/query",
                 params={"query": sql_query},
                 headers={
-                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                     "User-Agent": "Loyalty-Insights-Agent/1.0"
                 },
-                timeout=timeout
+                timeout=30  # 30 second timeout
             )
             
             # Check if request was successful
@@ -305,15 +304,25 @@ class LoyaltyAgent:
             # Parse response JSON
             data = response.json()
             
-            return data.get("results", []), data.get("count", 0)
+            # Handle the response data flexibly
+            if isinstance(data, dict):
+                # If the response is a single object, wrap it in a list
+                results = [data]
+            elif isinstance(data, list):
+                # If the response is already a list, use it as is
+                results = data
+            else:
+                # If the response is neither, wrap it in a dict and then a list
+                results = [{"value": data}]
+                
+            print(results)
+            
+            return results, len(results)
             
         except Exception as e:
             print(f"Error executing query: {str(e)}")
-            print("Using mock data instead")
-            
-            # Use mock data as fallback
-            mock_data = get_mock_data(sql_query)
-            return mock_data, len(mock_data)
+            # Return empty results on error
+            return [], 0
     
     def _generate_insights(self, question: str, sql_query: str, data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -341,7 +350,14 @@ class LoyaltyAgent:
             Please provide:
             1. A suitable title for this data analysis (keep it short and informative)
             2. 3-5 key insights from the data (focus on patterns, trends, or notable observations)
-            3. 2-3 actionable business recommendations based on these insights
+            3. 0-3 actionable business recommendations based on these insights (only include recommendations if they are truly valuable and actionable)
+            
+            Important guidelines:
+            - Never reference internal client IDs in the insights or recommendations
+            - Frame recommendations from the client's perspective (e.g., "Send targeted emails to your customers" instead of "Send emails to client 5252")
+            - Only include recommendations if they are truly valuable and actionable
+            - Focus on customer-centric insights and recommendations
+            - Use "your customers" or "your loyalty program" instead of referencing specific client IDs
             
             Format your response as a JSON object with the following structure:
             {{
@@ -354,7 +370,9 @@ class LoyaltyAgent:
                 {{"id": 1, "title": "Recommendation title", "description": "Details...", "type": "email|award|other"}},
                 {{"id": 2, "title": "Recommendation title", "description": "Details...", "type": "email|award|other"}}
               ]
-            }}"""
+            }}
+            
+            Note: The recommendations array can be empty if no actionable recommendations are warranted."""
             
             # Generate insights with the language model
             response = self.model.invoke([HumanMessage(content=prompt)])

@@ -12,7 +12,7 @@ def load_database_schema() -> DatabaseSchema:
     """
     schema_dir = Path(__file__).parent.parent.parent / "schema" / "yml"
     tables = []
-
+    
     try:
         schema_dir.mkdir(parents=True, exist_ok=True)
         yml_files = list(schema_dir.glob("*.yml")) + list(schema_dir.glob("*.yaml"))
@@ -29,9 +29,14 @@ def load_database_schema() -> DatabaseSchema:
             if table_data and "name" in table_data and "columns" in table_data:
                 columns = []
                 for col in table_data["columns"]:
+                    # Check for required fields
+                    if not all(key in col for key in ["name", "description"]):
+                        print(f"Warning: Skipping column in {file_path} - missing required fields (name or description)")
+                        continue
+                        
                     column = TableColumn(
                         name=col["name"],
-                        type=col["type"],
+                        type=col.get("type"),  # Optional field without default value
                         description=col["description"],
                         properties=col.get("properties")  # Optional field
                     )

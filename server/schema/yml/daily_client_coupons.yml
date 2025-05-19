@@ -1,0 +1,52 @@
+name: gameball_analytics.daily_client_coupons
+description: "Aggregated daily metrics for coupons, including issued and burned coupons, grouped by date, client_id, coupon_source, coupon_type, product_name, coupon_prefix, and group_handle."
+columns:
+    - name: date
+      description: "The date the coupon was created."
+      properties:
+        - not_null
+
+    - name: client_id
+      description: "The unique identifier for the client associated with the coupon."
+
+    - name: coupon_source
+      description: "The source of the coupon (e.g., referral, promotion)."
+
+    - name: coupon_type
+      description: "The type of the coupon (e.g., percentage, fixed amount)."
+
+    - name: product_name
+      description: "The name of the product associated with the coupon."
+
+    - name: coupon_prefix
+      description: "The prefix code of the coupon, used to categorize or identify coupon batches."
+
+    - name: group_handle
+      description: "The group or segment to which the coupon belongs."
+
+    - name: unique_customer_count
+      description: "The number of unique customers who received the coupon."
+
+    - name: issued_coupons_count
+      description: "The total number of coupons issued."
+
+    - name: burned_coupons_count
+      description: "The total number of coupons burned (used)."
+
+    - name: coupon_points
+      description: "The total points associated with the issued coupons."
+
+    - name: coupon_value
+      description: "The total monetary value of the issued coupons."
+
+    - name: coupon_usd
+      description: "The total monetary value of the issued coupons in USD."
+
+    - name: discounted_amount
+      description: "The total discount amount redeemed using coupons."
+
+    - name: coupons_order_revenue
+      description: "The total revenue from orders where coupons were used."
+
+    - name: unique_orders_count
+      description: "The number of unique orders where coupons were used."
