@@ -5,7 +5,19 @@ class TableColumn:
         self.name = name
         self.type = type
         self.description = description
-        self.properties = properties or {}
+        # Ensure properties is always a dictionary
+        if properties is None:
+            self.properties = {}
+        elif isinstance(properties, dict):
+            self.properties = properties
+        elif isinstance(properties, list):
+            # Convert list to dict if it's a list of key-value pairs
+            try:
+                self.properties = dict(properties)
+            except (ValueError, TypeError):
+                self.properties = {}
+        else:
+            self.properties = {}
 
     def to_dict(self):
         column_dict = {
