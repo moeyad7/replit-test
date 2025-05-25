@@ -335,7 +335,40 @@ class LoyaltyAgent:
             print("\nStarting LangGraph workflow...")
             final_state = await self.graph.ainvoke(state)
             
-            # Prepare response
+            # Check if there was an error
+            if final_state["error"] and not final_state["error"]["is_valid"]:
+                error_type = final_state["error"]["error_type"]
+                error_message = final_state["error"]["error_message"]
+                
+                # Create user-friendly error message based on error type
+                user_message = self._get_user_friendly_error_message(error_type, error_message)
+                
+                return {
+                    "queryUnderstanding": user_message,
+                    "sqlQuery": final_state["sql_query"] or "",
+                    "databaseResults": {
+                        "count": final_state["result_count"] or 0,
+                        "time": final_state["query_time"] or 0
+                    },
+                    "title": "Unable to Process Request",
+                    "data": [],
+                    "insights": [{
+                        "id": 1,
+                        "text": user_message
+                    }],
+                    "recommendations": [{
+                        "id": 1,
+                        "title": "Try Again",
+                        "description": "Please rephrase your question or try different parameters.",
+                        "type": "other"
+                    }],
+                    "error": {
+                        "type": error_type,
+                        "message": error_message
+                    }
+                }
+            
+            # Prepare response for successful case
             response = {
                 "queryUnderstanding": f"I'm looking for loyalty program data that answers: '{question}'",
                 "sqlQuery": final_state["sql_query"] or "",
@@ -344,7 +377,7 @@ class LoyaltyAgent:
                     "time": final_state["query_time"] or 0
                 },
                 "title": final_state["insights"]["title"],
-                "data": final_state["data"] or [],  # Renamed from query_results
+                "data": final_state["data"] or [],
                 "insights": final_state["insights"]["insights"],
                 "recommendations": final_state["insights"]["recommendations"]
             }
@@ -359,25 +392,45 @@ class LoyaltyAgent:
         except Exception as e:
             print(f"\n✗ Error in LoyaltyAgent: {str(e)}")
             return {
-                "queryUnderstanding": f"Error processing question: {str(e)}",
+                "queryUnderstanding": "I encountered an error while processing your request.",
                 "sqlQuery": "",
                 "databaseResults": {
                     "count": 0,
                     "time": 0
                 },
-                "title": "Error",
+                "title": "System Error",
                 "data": [],
                 "insights": [{
                     "id": 1,
-                    "text": f"Error processing question: {str(e)}"
+                    "text": "An unexpected error occurred. Please try again later."
                 }],
                 "recommendations": [{
                     "id": 1,
                     "title": "Try Again",
-                    "description": "Please try rephrasing your question.",
+                    "description": "Please try your request again in a few moments.",
                     "type": "other"
-                }]
+                }],
+                "error": {
+                    "type": "system_error",
+                    "message": str(e)
+                }
             }
+    
+    def _get_user_friendly_error_message(self, error_type: str, error_message: str) -> str:
+        """Convert technical error messages into user-friendly messages"""
+        error_messages = {
+            "security_violation": "Your question contains potentially harmful content. Please rephrase it.",
+            "client_id_violation": "I cannot process questions that reference specific client IDs.",
+            "missing_client_id": "I'm unable to process your request at this time. Please try again.",
+            "dangerous_operation": "The requested operation is not allowed.",
+            "max_retries_exceeded": "I'm having trouble understanding your question. Could you please rephrase it?",
+            "sql_generation_error": "I'm having trouble converting your question into a database query. Please try rephrasing it.",
+            "query_execution_error": "I encountered an error while retrieving the data. Please try again.",
+            "validation_error": "I couldn't validate the results properly. Please try rephrasing your question.",
+            "insights_generation_error": "I'm having trouble analyzing the data. Please try a different question."
+        }
+        
+        return error_messages.get(error_type, "I encountered an error while processing your request. Please try again.")
     
     async def create_chat_session(self, client_id: int = 5252) -> str:
         """Create a new chat session and return its ID"""

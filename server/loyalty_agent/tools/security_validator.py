@@ -28,6 +28,9 @@ class SecurityValidatorTool:
         
         # Compile patterns for better performance
         self.pattern = re.compile('|'.join(self.dangerous_patterns), re.IGNORECASE)
+        
+        # Pattern to detect client ID references
+        self.client_id_pattern = re.compile(r'\b(?:client\s*id|client_id|clientid)\s*(?:=|is|:)?\s*\d+\b', re.IGNORECASE)
 
     async def validate_input(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Validate the input question for security"""
@@ -35,8 +38,8 @@ class SecurityValidatorTool:
         try:
             question = state["question"]
             
-            # Check for client_id in question
-            if 'client_id' in question.lower():
+            # Check for client_id references in question
+            if self.client_id_pattern.search(question):
                 print("✗ Input contains client_id reference")
                 state["error"] = {
                     "is_valid": False,
