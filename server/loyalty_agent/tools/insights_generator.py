@@ -57,36 +57,37 @@ class InsightsGeneratorTool:
             
             # Extract and parse the JSON from the response
             try:
-                response_text = response.content.strip()
+                # Get the content from the response
+                response_text = response.content if hasattr(response, 'content') else str(response)
+                response_text = response_text.strip()
+                                
                 # Find JSON in the response (in case it contains additional text)
                 json_start = response_text.find('{')
                 json_end = response_text.rfind('}') + 1
+                
                 if json_start >= 0 and json_end > json_start:
                     json_str = response_text[json_start:json_end]
                     analysis = json.loads(json_str)
                     print(f"✓ Generated insights with title: {analysis.get('title', 'No title')}")
-                    return analysis
+                    state["insights"] = analysis
+                    return state
                 else:
                     raise ValueError("No valid JSON found in response")
                     
             except Exception as parse_error:
                 print(f"✗ Error parsing insights JSON: {str(parse_error)}")
-                return await self._create_fallback_insights()
+                state["error"] = {
+                    "is_valid": False,
+                    "error_message": f"Failed to parse insights: {str(parse_error)}",
+                    "error_type": "insights_parse_error"
+                }
+                return state
                 
         except Exception as e:
             print(f"✗ Error generating insights: {str(e)}")
-            return await self._create_fallback_insights()
-    
-    async def _create_fallback_insights(self) -> Dict[str, Any]:
-        """Create fallback insights when generation fails"""
-        print("Creating fallback insights...")
-        return {
-            "title": "Data Analysis",
-            "insights": [{"id": 1, "text": "Unable to generate insights from the data."}],
-            "recommendations": [{
-                "id": 1,
-                "title": "Review Query",
-                "description": "The current query may not be providing enough data for meaningful analysis.",
-                "type": "other"
-            }]
-        } 
+            state["error"] = {
+                "is_valid": False,
+                "error_message": f"Failed to generate insights: {str(e)}",
+                "error_type": "insights_generation_error"
+            }
+            return state

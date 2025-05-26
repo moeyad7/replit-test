@@ -10,7 +10,6 @@ import requests
 
 from .models.schema import Table, DatabaseSchema
 from .utils.schema_utils import load_database_schema, format_schema_for_prompt
-from .mock_data.mock_data import get_mock_data
 from .chat_history import ChatHistory
 from .utils.validators import SecurityValidator, ResponseValidator
 

@@ -7,10 +7,15 @@ interface ResultsTableProps {
   title: string;
   data: Customer[];
   isLoading: boolean;
+  error?: {
+    type: string;
+    message: string;
+  };
 }
 
-export default function ResultsTable({ title, data, isLoading }: ResultsTableProps) {
-  if (!data.length && !isLoading) return null;
+export default function ResultsTable({ title, data, isLoading, error }: ResultsTableProps) {
+  // Don't show the table if there's an error or no data
+  if (error || (!data.length && !isLoading)) return null;
   
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`;

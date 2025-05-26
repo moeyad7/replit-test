@@ -31,6 +31,10 @@ export interface QueryResponse {
   data: Customer[];
   insights: Insight[];
   recommendations: Recommendation[];
+  error?: {
+    type: string;
+    message: string;
+  };
 }
 
 // Database schema types

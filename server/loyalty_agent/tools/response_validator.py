@@ -23,10 +23,16 @@ class ResponseValidatorTool:
             
             Query results: {json.dumps(results)}
             
+            IMPORTANT BUSINESS RULES:
+            - Each client can only access their own data and their own customers
+            - All queries MUST be filtered by client_id
+            - This is a multi-tenant system where each client's data is isolated
+            
             Please validate if:
             1. The results directly answer the user's question
             2. The results are complete and not missing important information
             3. The query is properly structured to get the required data
+            4. The query correctly filters by client_id (this is required)
             
             Return a JSON object with the following structure:
             {{
@@ -59,24 +65,34 @@ class ResponseValidatorTool:
                 
                 if validation["is_valid"]:
                     print("✓ Response validation passed")
+                    state["error"] = {
+                    "is_valid": True,
+                    "needs_retry": False,
+                    "error_message": None,
+                    "error_type": None
+                    }
                 else:
                     print(f"✗ Response validation failed: {validation['error_message']}")
-                return validation
+                    state["error"] = validation
+                
+                return state
                 
             except (json.JSONDecodeError, ValueError) as e:
                 print(f"✗ Error parsing validation response: {str(e)}")
-                return {
+                state["error"] = {
                     "is_valid": False,
                     "needs_retry": False,
                     "error_message": "Failed to validate response",
                     "error_type": "validation_error"
                 }
+                return state
                 
         except Exception as e:
             print(f"✗ Error in response validation: {str(e)}")
-            return {
+            state["error"] = {
                 "is_valid": False,
                 "needs_retry": False,
                 "error_message": str(e),
                 "error_type": "validation_error"
-            } 
+            }
+            return state 

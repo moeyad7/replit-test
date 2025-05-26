@@ -16,16 +16,17 @@ from .tools.insights_generator import InsightsGeneratorTool
 from .tools.query_executor import QueryExecutorTool
 from .tools.security_validator import SecurityValidatorTool
 from .tools.response_validator import ResponseValidatorTool
+from .workflow_supervisor import WorkflowSupervisor, StepStatus
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 class AgentState(TypedDict):
     """State for the loyalty agent workflow"""
-    question: Annotated[str, operator.add]  # Using operator.add as reducer
+    question: Annotated[str, lambda x, y: y]  # Keep the last value
     session_id: Annotated[Optional[str], lambda x, y: y]  # Keep the last value
     client_id: Annotated[int, lambda x, y: y]  # Keep the last value
-    chat_context: Annotated[str, operator.add]  # Using operator.add as reducer
+    chat_context: Annotated[Dict[str, Any], lambda x, y: {**x, **y} if x and y else y or x]  # Merge chat contexts
     schema: Annotated[List[Any], lambda x, y: y]  # Keep the last schema
     sql_query: Annotated[Optional[str], lambda x, y: y]  # Keep the last value
     data: Annotated[Optional[List[Dict[str, Any]]], lambda x, y: y]  # Keep the last value
@@ -34,6 +35,8 @@ class AgentState(TypedDict):
     insights: Annotated[Optional[Dict[str, Any]], lambda x, y: {**x, **y} if x and y else y or x]  # Merge dictionaries if both exist
     error: Annotated[Optional[Dict[str, Any]], lambda x, y: y]  # Keep the last error
     retry_count: Annotated[int, operator.add]  # Sum retry counts
+    next_step: Annotated[Optional[str], lambda x, y: y]  # Next step in workflow
+    step_status: Annotated[Optional[StepStatus], lambda x, y: y]  # Status of current step
 
 class LoyaltyAgent:
     """LoyaltyAgent processes natural language questions about loyalty program data using LangGraph"""
@@ -78,6 +81,9 @@ class LoyaltyAgent:
             print(f"✗ Error initializing tools: {str(e)}")
             raise ValueError(f"Failed to initialize tools: {str(e)}")
         
+        # Initialize workflow supervisor
+        self.supervisor = WorkflowSupervisor(max_retries=3)
+        
         # Build the graph
         try:
             print("Building LangGraph workflow...")
@@ -94,7 +100,7 @@ class LoyaltyAgent:
         # Create the graph
         workflow = StateGraph(AgentState)
         
-        # Define the nodes
+        # Define the nodes with supervisor
         workflow.add_node("validate_input", self._validate_input)
         workflow.add_node("generate_sql", self._generate_sql)
         workflow.add_node("execute_query", self._execute_query)
@@ -102,30 +108,46 @@ class LoyaltyAgent:
         workflow.add_node("generate_insights", self._generate_insights)
         workflow.add_node("create_error", self._create_error)
         
-        # Define conditional edges
-        def has_error(state: AgentState) -> bool:
-            return state["error"] and not state["error"]["is_valid"]
+        # Define the routing function
+        def route_next_step(state: AgentState) -> str:
+            # If workflow is complete, end
+            if self.supervisor.is_workflow_complete(state):
+                return END
+            
+            # If we're in retry mode, respect the next_step
+            if state.get("step_status") == StepStatus.RETRY:
+                return state.get("next_step", END)
+            
+            # If there's an error, go to error handling
+            if state.get("error") and not state["error"]["is_valid"]:
+                return "create_error"
+            
+            # Use the next_step from supervisor
+            return state.get("next_step", END)
         
-        # Define the edges with conditions
+        # Add conditional edges using the routing function
         workflow.add_conditional_edges(
             "validate_input",
-            lambda x: "create_error" if has_error(x) else "generate_sql"
+            route_next_step
         )
         workflow.add_conditional_edges(
             "generate_sql",
-            lambda x: "create_error" if has_error(x) else "execute_query"
+            route_next_step
         )
         workflow.add_conditional_edges(
             "execute_query",
-            lambda x: "create_error" if has_error(x) else "validate_response"
+            route_next_step
         )
         workflow.add_conditional_edges(
             "validate_response",
-            lambda x: "create_error" if has_error(x) else "generate_insights"
+            route_next_step
+        )
+        workflow.add_conditional_edges(
+            "generate_insights",
+            route_next_step
         )
         
         # Add final edges
-        workflow.add_edge("generate_insights", END)
         workflow.add_edge("create_error", END)
         
         # Set the entry point
@@ -135,101 +157,82 @@ class LoyaltyAgent:
     
     async def _validate_input(self, state: AgentState) -> AgentState:
         """Validate the input question"""
-        print("\n--- Validating Input ---")
-        state = await self.security_validator.validate_input(state)
-        if not state["error"]["is_valid"]:
-            print(f"✗ Input validation failed: {state['error']['error_message']}")
-        else:
-            print("✓ Input validation passed")
-        return state
+        return await self.supervisor.supervise_step(
+            "validate_input",
+            self.security_validator.validate_input,
+            state,
+            next_step="generate_sql",
+            error_step="create_error"
+        )
     
     async def _generate_sql(self, state: AgentState) -> AgentState:
         """Generate SQL from the question"""
-        print("\n--- Generating SQL ---")
-        try:
-            
-            # First determine relevant tables and update schema
-            state = await self.sql_generator.determine_relevant_tables(state)
-            
-            # Then generate SQL using the filtered schema
-            state = await self.sql_generator.generate_sql(state)
-            
-            # Validate SQL security
-            state = await self.security_validator.validate_sql(state)
-            if not state["error"]["is_valid"]:
-                print(f"✗ SQL validation failed: {state['error']['error_message']}")
-                return state
-            
-            print("✓ SQL generated and validated")
+        # First determine relevant tables
+        state = await self.supervisor.supervise_step(
+            "determine_tables",
+            self.sql_generator.determine_relevant_tables,
+            state,
+            next_step="generate_sql_query",
+            error_step="create_error"
+        )
+        
+        if state["step_status"] == StepStatus.ERROR:
             return state
             
-        except Exception as e:
-            print(f"✗ Error generating SQL: {str(e)}")
-            state["error"] = {
-                "is_valid": False,
-                "error_message": str(e),
-                "error_type": "sql_generation_error"
-            }
+        # Then generate SQL using the filtered schema
+        state = await self.supervisor.supervise_step(
+            "generate_sql_query",
+            self.sql_generator.generate_sql,
+            state,
+            next_step="validate_sql",
+            error_step="create_error"
+        )
+        
+        if state["step_status"] == StepStatus.ERROR:
             return state
+            
+        # Finally validate SQL security
+        state = await self.supervisor.supervise_step(
+            "validate_sql",
+            self.security_validator.validate_sql,
+            state,
+            next_step="execute_query",
+            error_step="create_error"
+        )
+        
+        # If we're here, we have a valid SQL query
+        # The execute_query step will handle retrying if needed
+        return state
     
     async def _execute_query(self, state: AgentState) -> AgentState:
         """Execute the SQL query"""
-        print("\n--- Executing Query ---")
-        try:
-            start_time = time.time()
-            state = await self.query_executor.execute_query(state)
-            query_time = time.time() - start_time
-            
-            print(f"✓ Query executed in {query_time:.2f} seconds, returned {state['result_count']} rows")
-            state["query_time"] = query_time
-            return state
-            
-        except Exception as e:
-            print(f"✗ Error executing query: {str(e)}")
-            state["error"] = {
-                "error_type": "query_execution_error",
-                "error_message": str(e)
-            }
-            return state
+        return await self.supervisor.supervise_step(
+            "execute_query",
+            self.query_executor.execute_query,
+            state,
+            next_step="validate_response",
+            error_step="create_error"
+        )
     
     async def _validate_response(self, state: AgentState) -> AgentState:
         """Validate if the response answers the question"""
-        print("\n--- Validating Response ---")
-        validation = await self.response_validator.validate_response(state)
-        
-        if not validation["is_valid"]:
-            if validation["needs_retry"] and state["retry_count"] < 3:
-                print(f"! Response validation failed, retrying (attempt {state['retry_count'] + 1}/3)")
-                state["retry_count"] += 1
-                return state
-            else:
-                print(f"✗ Response validation failed: {validation['error_message']}")
-                state["error"] = {
-                    "error_type": validation["error_type"],
-                    "error_message": validation["error_message"]
-                }
-                return state
-        
-        print("✓ Response validation passed")
-        return state
+        return await self.supervisor.supervise_step(
+            "validate_response",
+            self.response_validator.validate_response,
+            state,
+            next_step="generate_insights",
+            error_step="create_error"
+        )
     
     async def _generate_insights(self, state: AgentState) -> AgentState:
-        """Generate insights from the query results"""
-        print("\n--- Generating Insights ---")
-        try:
-            insights = await self.insights_generator.generate_insights(state)
-            print("✓ Insights generated")
-            state["insights"] = insights
-            return state
-            
-        except Exception as e:
-            print(f"✗ Error generating insights: {str(e)}")
-            state["error"] = {
-                "is_valid": False,
-                "error_message": str(e),
-                "error_type": "insights_generation_error"
-            }
-            return state
+        """Generate insights from the results"""
+        return await self.supervisor.supervise_step(
+            "generate_insights",
+            self.insights_generator.generate_insights,
+            state,
+            next_step=END,  # This is the final step
+            error_step="create_error"
+        )
     
     async def _create_error(self, state: AgentState) -> AgentState:
         """Create a standardized error response"""
@@ -259,6 +262,11 @@ class LoyaltyAgent:
                 "title": "Unable to Process",
                 "message": "Please rephrase your question to be more specific.",
                 "type": "error"
+            },
+            "validation_error": {
+                "title": "Unable to Process",
+                "message": "I couldn't validate the results properly. Please try rephrasing your question.",
+                "type": "error"
             }
         }
         
@@ -272,6 +280,12 @@ class LoyaltyAgent:
         )
         
         print(f"! Creating error response: {error_info['title']}")
+        
+        # Clear all data and only keep error information
+        state["sql_query"] = None
+        state["data"] = None
+        state["result_count"] = None
+        state["query_time"] = None
         state["insights"] = {
             "title": error_info["title"],
             "insights": [{
@@ -298,16 +312,23 @@ class LoyaltyAgent:
         
         try:
             # Get chat history if session_id is provided
-            chat_context = ""
+            chat_context = {
+                "previous_questions": [],
+                "previous_sql_queries": [],
+                "previous_insights": [],
+                "current_step": "start",
+                "workflow_history": []
+            }
+            
             if session_id:
                 try:
                     history = await self.chat_history.get_history(session_id)
                     if history:
-                        chat_context = "\n\nPrevious conversation context:\n"
                         for msg in history[-3:]:  # Only include last 3 messages
-                            chat_context += f"Q: {msg['question']}\n"
-                            chat_context += f"A: {msg['response']['queryUnderstanding']}\n"
-                            chat_context += f"SQL: {msg['response']['sqlQuery']}\n\n"
+                            chat_context["previous_questions"].append(msg["question"])
+                            chat_context["previous_sql_queries"].append(msg["response"]["sqlQuery"])
+                            if "insights" in msg["response"]:
+                                chat_context["previous_insights"].append(msg["response"]["insights"])
                 except Exception as e:
                     print(f"! Warning: Could not get chat history: {str(e)}")
             
@@ -319,7 +340,7 @@ class LoyaltyAgent:
                 chat_context=chat_context,
                 schema=[],  # Add schema to initial state
                 sql_query=None,
-                data=None,  # Renamed from query_results
+                data=None,
                 result_count=None,
                 query_time=None,
                 insights=None,
@@ -335,6 +356,32 @@ class LoyaltyAgent:
             print("\nStarting LangGraph workflow...")
             final_state = await self.graph.ainvoke(state)
             
+            # Update chat context with final state
+            final_state["chat_context"]["workflow_history"].append({
+                "step": final_state["next_step"],
+                "status": final_state["step_status"],
+                "sql_query": final_state["sql_query"],
+                "insights": final_state["insights"]
+            })
+            
+            # Log the complete final state before response
+            print("\n=== Complete Final State Before Response ===")
+            print(f"Question: {final_state['question']}")
+            print(f"Session ID: {final_state['session_id']}")
+            print(f"Client ID: {final_state['client_id']}")
+            print(f"Chat Context: {final_state['chat_context']}")
+            print(f"Schema: {final_state['schema']}")
+            print(f"SQL Query: {final_state['sql_query']}")
+            print(f"Data: {final_state['data']}")
+            print(f"Result Count: {final_state['result_count']}")
+            print(f"Query Time: {final_state['query_time']}")
+            print(f"Insights: {final_state['insights']}")
+            print(f"Error: {final_state['error']}")
+            print(f"Retry Count: {final_state['retry_count']}")
+            print(f"Next Step: {final_state['next_step']}")
+            print(f"Step Status: {final_state['step_status']}")
+            print("==========================================\n")
+            
             # Check if there was an error
             if final_state["error"] and not final_state["error"]["is_valid"]:
                 error_type = final_state["error"]["error_type"]
@@ -343,12 +390,12 @@ class LoyaltyAgent:
                 # Create user-friendly error message based on error type
                 user_message = self._get_user_friendly_error_message(error_type, error_message)
                 
-                return {
+                response = {
                     "queryUnderstanding": user_message,
-                    "sqlQuery": final_state["sql_query"] or "",
+                    "sqlQuery": "",  # Empty string for SQL query on error
                     "databaseResults": {
-                        "count": final_state["result_count"] or 0,
-                        "time": final_state["query_time"] or 0
+                        "count": 0,
+                        "time": 0
                     },
                     "title": "Unable to Process Request",
                     "data": [],
@@ -367,20 +414,20 @@ class LoyaltyAgent:
                         "message": error_message
                     }
                 }
-            
-            # Prepare response for successful case
-            response = {
-                "queryUnderstanding": f"I'm looking for loyalty program data that answers: '{question}'",
-                "sqlQuery": final_state["sql_query"] or "",
-                "databaseResults": {
-                    "count": final_state["result_count"] or 0,
-                    "time": final_state["query_time"] or 0
-                },
-                "title": final_state["insights"]["title"],
-                "data": final_state["data"] or [],
-                "insights": final_state["insights"]["insights"],
-                "recommendations": final_state["insights"]["recommendations"]
-            }
+            else:
+                # Prepare response for successful case
+                response = {
+                    "queryUnderstanding": f"I'm looking for loyalty program data that answers: '{question}'",
+                    "sqlQuery": final_state["sql_query"] or "",
+                    "databaseResults": {
+                        "count": final_state["result_count"] or 0,
+                        "time": final_state["query_time"] or 0
+                    },
+                    "title": final_state["insights"]["title"],
+                    "data": final_state["data"] or [],
+                    "insights": final_state["insights"]["insights"],
+                    "recommendations": final_state["insights"]["recommendations"]
+                }
             
             # Add to chat history if session_id is provided
             if session_id:
