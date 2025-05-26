@@ -71,10 +71,10 @@ class LoyaltyAgent:
         # Initialize tools
         try:
             print("Initializing tools...")
-            self.sql_generator = SQLGeneratorTool(self.model)
+            self.security_validator = SecurityValidatorTool()
+            self.sql_generator = SQLGeneratorTool(self.model, self.security_validator)
             self.insights_generator = InsightsGeneratorTool(self.model)
             self.query_executor = QueryExecutorTool()
-            self.security_validator = SecurityValidatorTool()
             self.response_validator = ResponseValidatorTool(self.model)
             print("✓ Tools initialized")
         except Exception as e:
@@ -167,34 +167,10 @@ class LoyaltyAgent:
     
     async def _generate_sql(self, state: AgentState) -> AgentState:
         """Generate SQL from the question"""
-        # First determine relevant tables
+        # Generate SQL using the consolidated function that includes validation
         state = await self.supervisor.supervise_step(
-            "determine_tables",
-            self.sql_generator.determine_relevant_tables,
-            state,
-            next_step="generate_sql_query",
-            error_step="create_error"
-        )
-        
-        if state["step_status"] == StepStatus.ERROR:
-            return state
-            
-        # Then generate SQL using the filtered schema
-        state = await self.supervisor.supervise_step(
-            "generate_sql_query",
+            "generate_sql",
             self.sql_generator.generate_sql,
-            state,
-            next_step="validate_sql",
-            error_step="create_error"
-        )
-        
-        if state["step_status"] == StepStatus.ERROR:
-            return state
-            
-        # Finally validate SQL security
-        state = await self.supervisor.supervise_step(
-            "validate_sql",
-            self.security_validator.validate_sql,
             state,
             next_step="execute_query",
             error_step="create_error"

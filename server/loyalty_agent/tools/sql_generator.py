@@ -5,8 +5,9 @@ from ..utils.schema_utils import format_schema_for_prompt, get_table_name_descri
 import json
 
 class SQLGeneratorTool:
-    def __init__(self, model: ChatOpenAI):
+    def __init__(self, model: ChatOpenAI, security_validator):
         self.model = model
+        self.security_validator = security_validator
 
     async def determine_relevant_tables(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Determine which tables are relevant for the question"""
@@ -81,7 +82,7 @@ class SQLGeneratorTool:
             }
             return state
 
-    async def generate_sql(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def _generate_sql_query(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Generate SQL query from natural language question"""
         print("\n--- Generating SQL Query ---")
         try:
@@ -136,3 +137,22 @@ class SQLGeneratorTool:
                 "error_type": "sql_generation_error"
             }
             return state
+
+    async def generate_sql(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Orchestrate the entire SQL generation process including validation"""
+        # Step 1: Determine relevant tables
+        state = await self.determine_relevant_tables(state)
+        if state.get("error") and not state["error"]["is_valid"]:
+            return state
+
+        # Step 2: Generate SQL query
+        state = await self._generate_sql_query(state)
+        if state.get("error") and not state["error"]["is_valid"]:
+            return state
+
+        # Step 3: Validate SQL security
+        state = await self.security_validator.validate_sql(state)
+        if state.get("error") and not state["error"]["is_valid"]:
+            return state
+
+        return state

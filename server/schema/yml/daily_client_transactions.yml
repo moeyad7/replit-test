@@ -29,19 +29,19 @@ columns:
     type: bigint
 
   - name: earned_points
-    description: "Total points earned by customers on the given date."
+    description: "Total points earned by customers on the given date, including all types of point-earning activities such as rewards, refunds, migrations, and manual adjustments."
     type: bigint
 
   - name: earned_transactions
-    description: "Number of transactions in which points were earned."
+    description: "Number of transactions in which points were earned, including all types of point-earning activities."
     type: bigint
 
   - name: earned_customers
-    description: "Number of distinct customers who earned points."
+    description: "Number of distinct customers who earned points through any point-earning activity."
     type: bigint
 
   - name: earned_value
-    description: "Total monetary value corresponding to earned points."
+    description: "Total monetary value corresponding to all earned points."
     type: numeric
 
   - name: earned_usd
@@ -49,15 +49,15 @@ columns:
     type: double precision
 
   - name: redeemed_points
-    description: "Total points redeemed by customers."
+    description: "Total points redeemed by customers, including both fixed and discount-based redemptions."
     type: bigint
 
   - name: redeemed_transactions
-    description: "Number of transactions where points were redeemed."
+    description: "Number of transactions where points were redeemed, including both fixed and discount-based redemptions."
     type: bigint
 
   - name: redeemed_customers
-    description: "Number of distinct customers who redeemed points."
+    description: "Number of distinct customers who redeemed points for rewards or discounts."
     type: bigint
 
   - name: redeemed_value
@@ -69,15 +69,15 @@ columns:
     type: double precision
 
   - name: burned_points
-    description: "Total points burned (permanently removed without usage)."
+    description: "Total points permanently removed without usage, including expired, canceled, manually deducted, or partially refunded points."
     type: bigint
 
   - name: burned_transactions
-    description: "Number of transactions where points were burned."
+    description: "Number of transactions where points were permanently removed, including expired, canceled, manually deducted, or partially refunded points."
     type: bigint
 
   - name: burned_customers
-    description: "Number of distinct customers whose points were burned."
+    description: "Number of distinct customers whose points were permanently removed without usage."
     type: bigint
 
   - name: burned_value
@@ -89,7 +89,7 @@ columns:
     type: double precision
 
   - name: achievement_reward_points
-    description: "Points rewarded as part of achievements (e.g., reaching milestones)."
+    description: "Points rewarded as part of achievements, such as reaching milestones."
     type: bigint
 
   - name: achievement_reward_transactions
