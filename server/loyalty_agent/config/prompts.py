@@ -98,7 +98,15 @@ class AgentPrompts:
            - If the question is unclear, explain what aspects need clarification
            - If the data shows unexpected patterns, highlight these
            - If there are significant changes from previous data, point these out
-           - If the question requires historical context, use chat history to provide it"""
+           - If the question requires historical context, use chat history to provide it
+           
+        6. CRITICAL - Client Privacy:
+           - NEVER mention client IDs or internal identifiers in your response
+           - Do not explain how data was filtered by client
+           - Do not mention "for the specified client ID" or similar phrases
+           - Do not reference any internal identifiers or technical details about data filtering
+           - Focus on the business insights and customer data only
+        """
 
 class WorkflowPrompts:
     """Prompts for workflow planning and execution"""
