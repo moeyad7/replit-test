@@ -1,11 +1,19 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from ..utils.schema_utils import format_schema_for_prompt, get_table_name_description
 import json
+import logging
+
+from ..config.prompts import ToolPrompts
+from .security_validator import SecurityValidatorTool
+
+logger = logging.getLogger(__name__)
 
 class SQLGeneratorTool:
-    def __init__(self, model: ChatOpenAI, security_validator):
+    """Tool for generating SQL queries from natural language questions"""
+    
+    def __init__(self, model: ChatOpenAI, security_validator: SecurityValidatorTool):
         self.model = model
         self.security_validator = security_validator
 
@@ -14,31 +22,13 @@ class SQLGeneratorTool:
         print("\n--- Determining Relevant Tables ---")
         try:
             question = state["question"]
+            chat_context = state.get("chat_context", {})
             
-            # Get table descriptions
-            table_descriptions = get_table_name_description()
-            
-            # Create a JSON-formatted description of available tables
-            tables_json = json.dumps(table_descriptions, indent=2)
-            
-            prompt = f"""Given the user's question about a loyalty program database, identify which tables are needed to answer it.
-            
-            User question: {question}
-            
-            Available tables and their descriptions:
-            {tables_json}
-            
-            Guidelines:
-            1. Only select tables that are directly relevant to answering the question
-            2. Consider the relationships between tables
-            3. Include tables that contain necessary filtering or joining information
-            4. Exclude tables that are not needed for the query
-            
-            IMPORTANT: You must respond with a valid JSON array of strings containing ONLY the table names.
-            Example response format:
-            ["table1", "table2"]
-            
-            Do not include any other text or explanation, just the JSON array."""
+            # Create prompt for determining relevant tables
+            prompt = ToolPrompts.get_determine_relevant_tables_prompt(
+                question=question,
+                chat_context=chat_context
+            )
             
             print("Analyzing question to determine relevant tables...")
             response = await self.model.ainvoke([HumanMessage(content=prompt)])
@@ -55,12 +45,20 @@ class SQLGeneratorTool:
                     raise ValueError("Response is not a list")
                 if not all(isinstance(table, str) for table in relevant_tables):
                     raise ValueError("Response contains non-string values")
-                if not relevant_tables:
-                    raise ValueError("Response is an empty list")
                 
-                # Store only the list of relevant table names in state
+                # Store the list of relevant table names in state
                 state["schema"] = relevant_tables
-                print(f"✓ Identified {len(relevant_tables)} relevant tables: {', '.join(relevant_tables)}")
+                
+                if not relevant_tables:
+                    print("! No relevant tables identified for the question")
+                    state["error"] = {
+                        "is_valid": False,
+                        "error_message": "Could not identify relevant tables for the question. The question may be unclear or require data not available in the database.",
+                        "error_type": "no_relevant_tables"
+                    }
+                else:
+                    print(f"✓ Identified {len(relevant_tables)} relevant tables: {', '.join(relevant_tables)}")
+                
                 return state
                     
             except Exception as parse_error:
@@ -89,28 +87,15 @@ class SQLGeneratorTool:
             question = state["question"]
             relevant_tables = state["schema"]  # This is now a list of table names
             client_id = state["client_id"]
+            chat_context = state.get("chat_context", {})
             
-            # Format schema for prompt
-            schema_prompt = format_schema_for_prompt(relevant_tables)
-            
-            prompt = f"""You are a SQL expert. Your task is to convert a natural language question into a SQL query.
-            
-            User question: {question}
-            
-            Relevant database schema:
-            {schema_prompt}
-            
-            Important guidelines:
-            1. ALWAYS filter by client_id = {client_id}
-            2. Use proper SQL syntax and formatting
-            3. Include only necessary columns
-            4. Use appropriate JOINs if multiple tables are needed
-            5. Add ORDER BY if the question implies any sorting
-            6. Use LIMIT if the question implies any limit
-            7. Use appropriate aggregation functions (COUNT, SUM, AVG, etc.) if needed
-            8. Format the output as a single, properly formatted SQL query
-            
-            Return ONLY the SQL query, nothing else."""
+            # Create prompt for SQL generation
+            prompt = ToolPrompts.get_sql_generator_prompt(
+                question=question,
+                schema=relevant_tables,
+                client_id=client_id,
+                chat_context=chat_context
+            )
             
             print("Generating SQL query...")
             response = await self.model.ainvoke([HumanMessage(content=prompt)])
@@ -126,7 +111,7 @@ class SQLGeneratorTool:
                 
             print("✓ SQL query generated successfully")
             print(sql_query)
-            state["sql_query"] = sql_query
+            state["current_sql_query"] = sql_query
             return state
             
         except Exception as e:

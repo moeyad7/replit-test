@@ -2,46 +2,58 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
+# Counter to track number of requests
+request_count = 0
+
 @app.route('/query', methods=['GET'])
 def handle_query():
     """
-    Handle query requests and return mock data
+    Handle query requests and return mock data based on the question
     """
-    # Get the query from request parameters
-    query = request.args.get('query', '')
+    global request_count
+    request_count += 1
+    
+    # Get both SQL query and question from request parameters
+    sql_query = request.args.get('sql_query', '')
+    question = request.args.get('query', '').lower()
         
-    if not query:
+    if not sql_query or not question:
         return jsonify({
-            'error': 'No query provided'
+            'error': 'Both SQL query and question must be provided'
         }), 400
     
     try:
-        # Check if this is the points query
-        if 'SUM(payment_reward_points)' in query and 'gameball_analytics.daily_client_transactions' in query:
+        # Handle different questions
+        if "how many points did my customers earn last week" in question:
             return jsonify({
-                'total_earned_points': 177551546,
+                'total_earned_points': 170618272,
+                'status': 'success',
+                'sql_query': sql_query
+            })
+        elif "where did this points come from" in question:
+            return jsonify({
                 'total_payment_reward_points': 166163746,
                 'total_achievement_reward_points': 11208450,
-                'total_manual_accumulated_points': 179350,
-                'total_migrated_points': 0,
                 'total_refunded_points': 0,
-                'total_partially_refunded_points': 524372,
-                'total_burned_points': 56454535,
-                'total_cancelled_points': 0,
-                'total_redeemed_discount_points': 110473800,
-                'status': 'success'
+                'total_migrated_points': 0,
+                'total_manual_accumulated_points': 179350,
+                'total_manual_rewarded_points': 6933274,
+                'status': 'success',
+                'sql_query': sql_query
             })
-        
-        # Default response for other queries
-        return jsonify({
-            'total_earned_points': 170618272,
-            'status': 'success'
-        })
-        
+        else:
+            return jsonify({
+                'error': 'Question not recognized',
+                'query': question,
+                'sql_query': sql_query,
+                'status': 'error'
+            }), 400
+            
     except Exception as e:
         return jsonify({
             'error': str(e),
-            'query': query,
+            'query': question,
+            'sql_query': sql_query,
             'status': 'error'
         }), 500
 

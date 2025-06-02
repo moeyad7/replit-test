@@ -1,23 +1,32 @@
 from typing import List, Dict, Any, Tuple
 import aiohttp
 import time
+import json
 
 class QueryExecutorTool:
     def __init__(self, base_url: str = "http://localhost:4000"):
         self.base_url = base_url
 
     async def execute_query(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute a SQL query by sending it to the mock API"""
+        """Execute a query by sending both SQL query and question to the mock API"""
         print("\n--- Executing Query ---")
         try:
-            sql_query = state["sql_query"]
-            print(f"Sending query to: {self.base_url}/query")
+            sql_query = state.get("current_sql_query", "")
+            question = state.get("question", "")
+            
+            if not sql_query or not question:
+                raise ValueError("Both SQL query and question must be provided in state")
+                
+            print(f"Sending query and question to: {self.base_url}/query")
             
             # Make the API request
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     f"{self.base_url}/query",
-                    params={"query": sql_query},
+                    params={
+                        "sql_query": sql_query,
+                        "query": question
+                    },
                     headers={
                         "Content-Type": "application/json",
                         "User-Agent": "Loyalty-Insights-Agent/1.0"
@@ -43,10 +52,10 @@ class QueryExecutorTool:
             
             print(f"✓ Query executed successfully, returned {len(results)} rows")
             
-            # Update state with results
-            state["data"] = results
+            # Update state with results in both places
+            state["current_data"] = results
+            state["query_results"] = results  # Store in both places for compatibility
             state["result_count"] = len(results)
-            print(data)
             return state
             
         except Exception as e:
@@ -57,6 +66,7 @@ class QueryExecutorTool:
                 "error_message": str(e),
                 "error_type": "query_execution_error"
             }
-            state["data"] = []
+            state["current_data"] = []
+            state["query_results"] = []  # Clear both data fields on error
             state["result_count"] = 0
             return state 

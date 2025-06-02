@@ -79,7 +79,7 @@ class SecurityValidatorTool:
         """Validate the generated SQL query for security"""
         print("\n--- Validating SQL Security ---")
         try:
-            sql_query = state["sql_query"]
+            sql_query = state["current_sql_query"]
             client_id = state["client_id"]
             
             # Normalize the SQL query for comparison

@@ -7,24 +7,13 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export interface QueryResponse {
-  queryUnderstanding: string;
-  sqlQuery: string;
-  databaseResults: {
-    count: number;
-    time: number;
-  };
-  title: string;
-  data: any[];
-  insights: Array<{
-    id: number;
-    text: string;
-  }>;
-  recommendations: Array<{
-    id: number;
-    title: string;
-    description: string;
-    type: string;
-  }>;
+  agent_response: string;
+  is_error?: boolean;
+  error_type?: string;
+  error_message?: string;
+  sqlQuery?: string;
+  data?: any;
+  insights?: any;
 }
 
 export interface ChatMessage {
